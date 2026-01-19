@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 import { storage } from '../data';
 import { Apartment } from '../types';
 
@@ -11,9 +12,23 @@ const ResidentDetails: React.FC = () => {
 
   useEffect(() => {
     if (id) {
-      const apts = storage.getApartments();
-      const apt = apts.find(a => a.id === id);
-      if (apt) setApartment(apt);
+      const fetchApt = async () => {
+        const { data } = await supabase
+          .from('apartments')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (data) {
+          setApartment({
+            ...data,
+            residentName: data.resident_name,
+            residentRole: data.resident_role,
+            avatarUrl: data.avatar_url
+          });
+        }
+      };
+      fetchApt();
     }
   }, [id]);
 
@@ -27,7 +42,7 @@ const ResidentDetails: React.FC = () => {
           <span className="material-symbols-outlined">arrow_back_ios</span>
         </button>
         <h2 className="font-bold text-slate-800 dark:text-white">Detalhes da Unidade</h2>
-        <button 
+        <button
           onClick={() => navigate(`/units/${id}/edit`)}
           className="text-primary font-bold px-2 py-1 text-sm uppercase tracking-widest"
         >
@@ -39,10 +54,10 @@ const ResidentDetails: React.FC = () => {
       <div className="flex flex-col items-center pt-8 pb-8 bg-white dark:bg-surface-dark mb-4 border-b dark:border-gray-800">
         <div className="relative mb-4">
           <div className="size-24 rounded-full shadow-lg p-0.5 bg-gradient-to-tr from-primary to-blue-400">
-            <img 
-              src={apartment.avatarUrl || `https://picsum.photos/seed/${apartment.id}/200`} 
-              className="size-full rounded-full object-cover border-2 border-white dark:border-gray-800" 
-              alt={apartment.residentName} 
+            <img
+              src={apartment.avatarUrl || `https://picsum.photos/seed/${apartment.id}/200`}
+              className="size-full rounded-full object-cover border-2 border-white dark:border-gray-800"
+              alt={apartment.residentName}
             />
           </div>
           <div className="absolute bottom-1 right-1 size-5 bg-green-500 border-2 border-white dark:border-gray-800 rounded-full" />
@@ -62,8 +77,8 @@ const ResidentDetails: React.FC = () => {
           { label: 'WhatsApp', icon: 'chat', color: 'text-green-600', bg: 'bg-green-50' },
           { label: 'Histórico', icon: 'history', color: 'text-slate-600', bg: 'bg-slate-100', path: '/history' }
         ].map((action) => (
-          <button 
-            key={action.label} 
+          <button
+            key={action.label}
             onClick={() => action.path && navigate(action.path)}
             className="flex flex-col items-center gap-3 p-5 bg-white dark:bg-surface-dark rounded-[24px] shadow-sm active:scale-95 transition-all"
           >
@@ -97,7 +112,7 @@ const ResidentDetails: React.FC = () => {
 
       {/* Fixed Action Button */}
       <div className="fixed bottom-0 left-0 right-0 p-4 pb-12 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-t dark:border-gray-800 max-w-md mx-auto z-40">
-        <button 
+        <button
           onClick={() => navigate(`/readings/${id}`)}
           className="w-full bg-primary text-white h-16 rounded-3xl font-bold text-lg shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-3"
         >

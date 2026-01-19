@@ -26,7 +26,17 @@ const ApartmentList: React.FC = () => {
     setIsLoading(true);
     const { data: apts } = await supabase.from('apartments').select('*').order('number');
     const { data: reads } = await supabase.from('readings').select('*');
-    if (apts) setApartments(apts);
+
+    if (apts) {
+      const mappedApts = apts.map(apt => ({
+        ...apt,
+        residentName: apt.resident_name,
+        residentRole: apt.resident_role,
+        avatarUrl: apt.avatar_url
+      }));
+      setApartments(mappedApts);
+    }
+
     if (reads) setSavedReadings(reads);
     setIsLoading(false);
   };

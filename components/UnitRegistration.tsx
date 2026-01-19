@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 import { storage } from '../data';
 import { Apartment } from '../types';
 
@@ -18,11 +19,23 @@ const UnitRegistration: React.FC = () => {
 
   useEffect(() => {
     if (isEdit) {
-      const apts = storage.getApartments();
-      const existing = apts.find(a => a.id === id);
-      if (existing) {
-        setFormData(existing);
-      }
+      const fetchApt = async () => {
+        const { data } = await supabase
+          .from('apartments')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (data) {
+          setFormData({
+            ...data,
+            residentName: data.resident_name,
+            residentRole: data.resident_role,
+            avatarUrl: data.avatar_url
+          });
+        }
+      };
+      fetchApt();
     }
   }, [id, isEdit]);
 
@@ -35,23 +48,34 @@ const UnitRegistration: React.FC = () => {
     setFormData(prev => ({ ...prev, residentRole: role }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.number || !formData.block || !formData.residentName) {
       alert('Por favor, preencha todos os campos obrigatórios.');
       return;
     }
 
-    const newApt: Apartment = {
-      id: isEdit ? id! : Math.random().toString(36).substr(2, 9),
+    const payload = {
       number: formData.number!,
       block: formData.block!,
-      residentName: formData.residentName!,
-      residentRole: formData.residentRole as 'Proprietário' | 'Inquilino',
-      avatarUrl: formData.avatarUrl || `https://picsum.photos/seed/${formData.number}/200`
+      resident_name: formData.residentName!,
+      resident_role: formData.residentRole as 'Proprietário' | 'Inquilino',
+      avatar_url: formData.avatarUrl || `https://picsum.photos/seed/${formData.number}/200`
     };
 
-    storage.saveApartment(newApt);
+    if (isEdit) {
+      const { error } = await supabase
+        .from('apartments')
+        .update(payload)
+        .eq('id', id);
+      if (error) alert('Erro ao atualizar: ' + error.message);
+    } else {
+      const { error } = await supabase
+        .from('apartments')
+        .insert([payload]);
+      if (error) alert('Erro ao cadastrar: ' + error.message);
+    }
+
     navigate('/units');
   };
 
@@ -73,12 +97,12 @@ const UnitRegistration: React.FC = () => {
             <span className="material-symbols-outlined fill-1">domain</span>
             <h2 className="font-bold text-slate-800 dark:text-white uppercase text-xs tracking-widest">Informações da Unidade</h2>
           </div>
-          
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Número</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 name="number"
                 value={formData.number}
                 onChange={handleChange}
@@ -88,8 +112,8 @@ const UnitRegistration: React.FC = () => {
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Bloco</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 name="block"
                 value={formData.block}
                 onChange={handleChange}
@@ -109,8 +133,8 @@ const UnitRegistration: React.FC = () => {
 
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nome Completo</label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               name="residentName"
               value={formData.residentName}
               onChange={handleChange}
@@ -122,26 +146,24 @@ const UnitRegistration: React.FC = () => {
           <div className="space-y-3">
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Vínculo com o Imóvel</label>
             <div className="grid grid-cols-2 gap-3">
-              <button 
+              <button
                 type="button"
                 onClick={() => handleRoleSelect('Proprietário')}
-                className={`h-14 rounded-2xl font-bold transition-all border-2 flex items-center justify-center gap-2 ${
-                  formData.residentRole === 'Proprietário' 
-                  ? 'bg-primary/5 border-primary text-primary shadow-sm shadow-primary/10' 
-                  : 'bg-white dark:bg-surface-dark border-slate-100 dark:border-gray-800 text-slate-400'
-                }`}
+                className={`h-14 rounded-2xl font-bold transition-all border-2 flex items-center justify-center gap-2 ${formData.residentRole === 'Proprietário'
+                    ? 'bg-primary/5 border-primary text-primary shadow-sm shadow-primary/10'
+                    : 'bg-white dark:bg-surface-dark border-slate-100 dark:border-gray-800 text-slate-400'
+                  }`}
               >
                 <span className="material-symbols-outlined">key</span>
                 Proprietário
               </button>
-              <button 
+              <button
                 type="button"
                 onClick={() => handleRoleSelect('Inquilino')}
-                className={`h-14 rounded-2xl font-bold transition-all border-2 flex items-center justify-center gap-2 ${
-                  formData.residentRole === 'Inquilino' 
-                  ? 'bg-primary/5 border-primary text-primary shadow-sm shadow-primary/10' 
-                  : 'bg-white dark:bg-surface-dark border-slate-100 dark:border-gray-800 text-slate-400'
-                }`}
+                className={`h-14 rounded-2xl font-bold transition-all border-2 flex items-center justify-center gap-2 ${formData.residentRole === 'Inquilino'
+                    ? 'bg-primary/5 border-primary text-primary shadow-sm shadow-primary/10'
+                    : 'bg-white dark:bg-surface-dark border-slate-100 dark:border-gray-800 text-slate-400'
+                  }`}
               >
                 <span className="material-symbols-outlined">description</span>
                 Inquilino
@@ -152,12 +174,17 @@ const UnitRegistration: React.FC = () => {
 
         {isEdit && (
           <div className="pt-4">
-            <button 
+            <button
               type="button"
-              onClick={() => {
+              onClick={async () => {
                 if (confirm('Tem certeza que deseja remover esta unidade permanentemente?')) {
-                  storage.deleteApartment(id!);
-                  navigate('/units');
+                  const { error } = await supabase
+                    .from('apartments')
+                    .delete()
+                    .eq('id', id);
+
+                  if (!error) navigate('/units');
+                  else alert('Erro ao remover: ' + error.message);
                 }
               }}
               className="w-full py-3 text-red-500 font-bold text-xs uppercase tracking-[3px] opacity-60 hover:opacity-100 transition-opacity"
@@ -170,7 +197,7 @@ const UnitRegistration: React.FC = () => {
 
       {/* Footer Actions */}
       <div className="fixed bottom-0 left-0 right-0 p-6 pb-12 bg-white/90 dark:bg-background-dark/90 backdrop-blur-xl border-t dark:border-gray-800 max-w-md mx-auto z-30">
-        <button 
+        <button
           onClick={handleSubmit}
           className="w-full h-16 bg-primary text-white rounded-[24px] font-black uppercase tracking-widest flex items-center justify-center gap-3 shadow-2xl shadow-primary/40 active:scale-[0.96] transition-all"
         >

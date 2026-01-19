@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 import { storage } from '../data';
 import { Apartment } from '../types';
 
@@ -23,10 +24,25 @@ const UnitList: React.FC = () => {
   const [units, setUnits] = useState<Apartment[]>([]);
 
   useEffect(() => {
-    setUnits(storage.getApartments());
+    const fetchUnits = async () => {
+      const { data, error } = await supabase
+        .from('apartments')
+        .select('*')
+        .order('number');
+
+      if (data) {
+        setUnits(data.map(apt => ({
+          ...apt,
+          residentName: apt.resident_name,
+          residentRole: apt.resident_role,
+          avatarUrl: apt.avatar_url
+        })));
+      }
+    };
+    fetchUnits();
   }, []);
 
-  const filtered = units.filter(ap => 
+  const filtered = units.filter(ap =>
     ap.number.includes(searchTerm) || ap.residentName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -43,8 +59,8 @@ const UnitList: React.FC = () => {
         {/* Search */}
         <div className="relative group">
           <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary">search</span>
-          <input 
-            type="text" 
+          <input
+            type="text"
             placeholder="Apto ou nome..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -53,7 +69,7 @@ const UnitList: React.FC = () => {
         </div>
 
         {/* Cadastro Unidade Button below search */}
-        <button 
+        <button
           onClick={() => navigate('/units/new')}
           className="w-full h-16 bg-primary text-white rounded-[24px] font-black uppercase tracking-[3px] text-xs flex items-center justify-center gap-3 shadow-xl shadow-primary/20 active:scale-95 transition-all"
         >
@@ -76,7 +92,7 @@ const UnitList: React.FC = () => {
             </div>
           ) : (
             filtered.map((ap) => (
-              <div 
+              <div
                 key={ap.id}
                 onClick={() => navigate(`/residents/${ap.id}`)}
                 className="bg-white dark:bg-surface-dark p-5 rounded-[32px] shadow-sm border border-white dark:border-gray-800 active:scale-[0.98] transition-all relative group overflow-hidden"
@@ -90,16 +106,15 @@ const UnitList: React.FC = () => {
                     <h3 className="font-black text-slate-800 dark:text-white truncate text-base uppercase tracking-tighter">Apto {ap.number}</h3>
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest truncate">{ap.residentName}</p>
                     <div className="mt-1">
-                      <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-md ${
-                        ap.residentRole === 'Proprietário' 
-                        ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400' 
-                        : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400'
-                      }`}>
+                      <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-md ${ap.residentRole === 'Proprietário'
+                          ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
+                          : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400'
+                        }`}>
                         {ap.residentRole}
                       </span>
                     </div>
                   </div>
-                  <button 
+                  <button
                     onClick={(e) => {
                       e.stopPropagation();
                       navigate(`/units/${ap.id}/edit`);
