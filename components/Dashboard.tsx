@@ -1,0 +1,217 @@
+
+import React, { useState, useEffect } from 'react';
+import { analyzeConsumption } from '../services/geminiService';
+import { MOCK_READINGS } from '../data';
+
+const Logo = () => (
+  <div className="flex flex-col items-center">
+    <svg width="60" height="45" viewBox="0 0 200 150" fill="none" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-sm">
+      <ellipse cx="85" cy="70" rx="35" ry="50" fill="#a66384" fillOpacity="0.7" transform="rotate(-15 85 70)" />
+      <ellipse cx="115" cy="70" rx="35" ry="50" fill="#802e53" fillOpacity="0.8" transform="rotate(15 115 70)" />
+    </svg>
+    <h1 className="text-xs font-bold text-primary uppercase tracking-tighter -mt-1">Luci Berkembrock</h1>
+    <div className="h-[1px] w-16 bg-primary/20 my-0.5"></div>
+    <p className="text-[6px] font-semibold text-primary/60 uppercase tracking-[3px]">Residence</p>
+  </div>
+);
+
+import { supabase } from '../lib/supabase';
+
+const Dashboard: React.FC = () => {
+  const [currentDate, setCurrentDate] = useState(new Date(2023, 9, 1)); // Iniciando em Outubro 2023 para bater com o mock/seed
+  const [insight, setInsight] = useState<string>('Analisando dados do mês...');
+  const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState({
+    water: 0,
+    gas: 0,
+    waterChange: 0,
+    gasChange: 0
+  });
+
+  const fetchDashboardData = async (date: Date) => {
+    setLoading(true);
+    setInsight('Analisando dados do mês...');
+
+    const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1).toISOString();
+    const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59).toISOString();
+
+    // Fetch current month readings
+    const { data: currentReadings } = await supabase
+      .from('readings')
+      .select('*')
+      .gte('date', startOfMonth)
+      .lte('date', endOfMonth);
+
+    // Fetch previous month readings for comparison
+    const prevMonthDate = new Date(date.getFullYear(), date.getMonth() - 1, 1);
+    const startOfPrevMonth = prevMonthDate.toISOString();
+    const endOfPrevMonth = new Date(date.getFullYear(), date.getMonth(), 0, 23, 59, 59).toISOString();
+
+    const { data: prevReadings } = await supabase
+      .from('readings')
+      .select('*')
+      .gte('date', startOfPrevMonth)
+      .lte('date', endOfPrevMonth);
+
+    const calculateTotal = (readings: any[], type: 'water' | 'gas') => {
+      return (readings || [])
+        .filter(r => r.type === type && r.current_value)
+        .reduce((acc, r) => acc + (Number(r.current_value) - Number(r.previous_value)), 0);
+    };
+
+    const currentWater = calculateTotal(currentReadings || [], 'water');
+    const currentGas = calculateTotal(currentReadings || [], 'gas');
+    const prevWater = calculateTotal(prevReadings || [], 'water');
+    const prevGas = calculateTotal(prevReadings || [], 'gas');
+
+    const calculateChange = (current: number, previous: number) => {
+      if (previous === 0) return 0;
+      return ((current - previous) / previous) * 100;
+    };
+
+    const waterChange = calculateChange(currentWater, prevWater);
+    const gasChange = calculateChange(currentGas, prevGas);
+
+    setSummary({
+      water: currentWater,
+      gas: currentGas,
+      waterChange,
+      gasChange
+    });
+
+    // IA Analysis with Real Data
+    if (currentWater > 0 || currentGas > 0) {
+      const res = await analyzeConsumption({
+        totalWater: currentWater,
+        totalGas: currentGas,
+        waterChange,
+        gasChange,
+        month: date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+      });
+      setInsight(res);
+    } else {
+      setInsight('Sem dados de leitura para este mês.');
+    }
+
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchDashboardData(currentDate);
+  }, [currentDate]);
+
+  const handlePrevMonth = () => {
+    setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  };
+
+  const formattedMonth = currentDate.toLocaleDateString('pt-BR', {
+    month: 'long',
+    year: 'numeric'
+  });
+
+  return (
+    <div className="scroll-container bg-background-light dark:bg-background-dark">
+      <div className="pt-safe pb-32">
+        <header className="px-6 py-6 bg-white dark:bg-surface-dark border-b dark:border-gray-800 flex flex-col items-center shadow-sm">
+          <Logo />
+          <p className="text-[8px] font-black text-slate-300 uppercase tracking-[2px] mt-3">Monitoramento Geral</p>
+        </header>
+
+        <div className="p-4 space-y-5">
+          {/* Month Picker Functional */}
+          <div className="flex items-center justify-between bg-white dark:bg-surface-dark px-4 py-3.5 rounded-3xl shadow-sm border dark:border-gray-800">
+            <button
+              onClick={handlePrevMonth}
+              className="size-9 rounded-full bg-slate-50 dark:bg-gray-800 flex items-center justify-center text-slate-400 active:bg-slate-100 transition-colors"
+            >
+              <span className="material-symbols-outlined text-lg">chevron_left</span>
+            </button>
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary text-lg">calendar_month</span>
+              <span className="font-bold text-[11px] uppercase tracking-widest text-primary shrink-0">
+                {formattedMonth}
+              </span>
+            </div>
+            <button
+              onClick={handleNextMonth}
+              className="size-9 rounded-full bg-slate-50 dark:bg-gray-800 flex items-center justify-center text-slate-400 active:bg-slate-100 transition-colors"
+            >
+              <span className="material-symbols-outlined text-lg">chevron_right</span>
+            </button>
+          </div>
+
+          {/* Gemini Insight Banner */}
+          <div className="bg-primary/5 dark:bg-primary/10 p-5 rounded-[2.5rem] border border-primary/20 flex gap-4 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-2 opacity-5 scale-150">
+              <span className="material-symbols-outlined text-5xl">auto_awesome</span>
+            </div>
+            <span className="material-symbols-outlined text-primary dark:text-primary animate-pulse flex-shrink-0">
+              {loading ? 'sync' : 'auto_awesome'}
+            </span>
+            <div>
+              <p className="text-[8px] font-bold text-primary dark:text-primary uppercase tracking-[2px] mb-1">IA Insight</p>
+              <p className="text-xs font-semibold text-slate-700 dark:text-gray-300 leading-relaxed italic">
+                "{insight}"
+              </p>
+            </div>
+          </div>
+
+          {/* Totals */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-5 rounded-[2.5rem] bg-white dark:bg-surface-dark shadow-sm border border-slate-50 dark:border-gray-800">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="size-8 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-primary flex-shrink-0">
+                  <span className="material-symbols-outlined text-lg fill-1">water_drop</span>
+                </div>
+                <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest truncate">Água</span>
+              </div>
+              <div className="flex items-baseline gap-0.5">
+                <span className="text-2xl font-bold tracking-tighter">
+                  {summary.water.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                </span>
+                <span className="text-[8px] font-bold text-slate-400 uppercase">m³</span>
+              </div>
+              <div className={`flex items-center gap-1 mt-2 font-bold text-[8px] uppercase ${summary.waterChange <= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                <span className="material-symbols-outlined text-[10px]">
+                  {summary.waterChange <= 0 ? 'trending_down' : 'trending_up'}
+                </span>
+                <span className="truncate">
+                  {summary.waterChange > 0 ? '+' : ''}{summary.waterChange.toFixed(1)}% {summary.waterChange <= 0 ? 'Estável' : 'Alerta'}
+                </span>
+              </div>
+            </div>
+
+            <div className="p-5 rounded-[2.5rem] bg-white dark:bg-surface-dark shadow-sm border border-slate-50 dark:border-gray-800">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="size-8 rounded-xl bg-orange-50 dark:bg-orange-900/30 flex items-center justify-center text-gas flex-shrink-0">
+                  <span className="material-symbols-outlined text-lg fill-1">local_fire_department</span>
+                </div>
+                <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest truncate">Gás</span>
+              </div>
+              <div className="flex items-baseline gap-0.5">
+                <span className="text-2xl font-bold tracking-tighter">
+                  {summary.gas.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                </span>
+                <span className="text-[8px] font-bold text-slate-400 uppercase">m³</span>
+              </div>
+              <div className={`flex items-center gap-1 mt-2 font-bold text-[8px] uppercase ${summary.gasChange <= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                <span className="material-symbols-outlined text-[10px]">
+                  {summary.gasChange <= 0 ? 'trending_down' : 'trending_up'}
+                </span>
+                <span className="truncate">
+                  {summary.gasChange > 0 ? '+' : ''}{summary.gasChange.toFixed(1)}% {summary.gasChange <= 0 ? 'Estável' : 'Alerta'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Dashboard;
