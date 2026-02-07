@@ -98,17 +98,18 @@ const UnitList: React.FC = () => {
                 className="bg-white dark:bg-surface-dark p-5 rounded-[32px] shadow-sm border border-white dark:border-gray-800 active:scale-[0.98] transition-all relative group overflow-hidden"
               >
                 <div className="flex items-center gap-4">
-                  <div className="size-14 rounded-2xl bg-slate-50 dark:bg-gray-800 flex flex-col items-center justify-center border border-slate-100 dark:border-gray-700">
-                    <span className="text-sm font-black text-primary">{ap.number}</span>
-                    <span className="text-[8px] font-bold text-slate-400 uppercase">Bl {ap.block}</span>
+                  <div className="size-16 rounded-2xl bg-slate-50 dark:bg-gray-800 flex flex-col items-center justify-center border border-slate-100 dark:border-gray-700 shadow-inner flex-shrink-0">
+                    <span className="text-lg font-black text-primary leading-none">{ap.number}</span>
+                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Bl {ap.block}</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-black text-slate-800 dark:text-white truncate text-base uppercase tracking-tighter">Apto {ap.number}</h3>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest truncate">{ap.residentName}</p>
-                    <div className="mt-1">
-                      <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-md ${ap.residentRole === 'Proprietário'
-                          ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
-                          : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400'
+                    <h3 className="font-black text-slate-800 dark:text-white truncate text-lg uppercase tracking-tighter leading-tight">
+                      {ap.residentName}
+                    </h3>
+                    <div className="mt-1 flex items-center gap-2">
+                      <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-md border ${ap.residentRole === 'Proprietário'
+                        ? 'bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800'
+                        : 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800'
                         }`}>
                         {ap.residentRole}
                       </span>
