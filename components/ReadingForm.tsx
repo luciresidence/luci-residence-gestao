@@ -13,11 +13,13 @@ const ReadingForm: React.FC = () => {
   const [waterValue, setWaterValue] = useState('');
   const [waterSaved, setWaterSaved] = useState(false);
   const [prevWater, setPrevWater] = useState(0);
+  const [waterId, setWaterId] = useState<string | null>(null);
 
   // States for Gas
   const [gasValue, setGasValue] = useState('');
   const [gasSaved, setGasSaved] = useState(false);
   const [prevGas, setPrevGas] = useState(0);
+  const [gasId, setGasId] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -51,14 +53,21 @@ const ReadingForm: React.FC = () => {
 
         if (reads) {
           const water = reads.find(r => r.type === 'water');
-          if (water && water.current_value) {
-            setWaterValue(String(water.current_value));
-            setWaterSaved(true);
+          if (water) {
+            if (water.current_value) {
+              setWaterValue(String(water.current_value));
+              setWaterSaved(true);
+            }
+            setWaterId(water.id);
           }
+
           const gas = reads.find(r => r.type === 'gas');
-          if (gas && gas.current_value) {
-            setGasValue(String(gas.current_value));
-            setGasSaved(true);
+          if (gas) {
+            if (gas.current_value) {
+              setGasValue(String(gas.current_value));
+              setGasSaved(true);
+            }
+            setGasId(gas.id);
           }
         }
 
@@ -92,14 +101,24 @@ const ReadingForm: React.FC = () => {
         }
       }
 
-      const { error } = await supabase.from('readings').upsert({
+      const payload = {
         apartment_id: id,
         type: 'water',
         previous_value: prevWater,
         current_value: currentVal,
         date: new Date().toISOString(),
         status: 'LIDO'
-      }, { onConflict: 'apartment_id, type, date' }); // Assuming we might want to prevent duplicates per day or handle it via a unique constraint
+      };
+
+      let error;
+      if (waterId) {
+        const { error: err } = await supabase.from('readings').update(payload).eq('id', waterId);
+        error = err;
+      } else {
+        const { data, error: err } = await supabase.from('readings').insert([payload]).select().single();
+        if (data) setWaterId(data.id);
+        error = err;
+      }
 
       if (error) alert('Erro ao salvar: ' + error.message);
       else setWaterSaved(true);
@@ -115,14 +134,24 @@ const ReadingForm: React.FC = () => {
         }
       }
 
-      const { error } = await supabase.from('readings').upsert({
+      const payload = {
         apartment_id: id,
         type: 'gas',
         previous_value: prevGas,
         current_value: currentVal,
         date: new Date().toISOString(),
         status: 'LIDO'
-      });
+      };
+
+      let error;
+      if (gasId) {
+        const { error: err } = await supabase.from('readings').update(payload).eq('id', gasId);
+        error = err;
+      } else {
+        const { data, error: err } = await supabase.from('readings').insert([payload]).select().single();
+        if (data) setGasId(data.id);
+        error = err;
+      }
 
       if (error) alert('Erro ao salvar: ' + error.message);
       else setGasSaved(true);
