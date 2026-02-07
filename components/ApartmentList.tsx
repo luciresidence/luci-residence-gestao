@@ -296,16 +296,16 @@ const ApartmentList: React.FC = () => {
 
       {/* Process Button - Only appears when 100% complete */}
       {isAllComplete && (
-        <div className="fixed bottom-0 left-0 right-0 p-6 pb-12 bg-white/90 dark:bg-background-dark/90 backdrop-blur-xl border-t dark:border-gray-800 z-30 animate-in slide-in-from-bottom duration-500">
+        <div className="fixed bottom-0 left-0 right-0 p-4 pb-8 z-30 flex justify-center pointer-events-none animate-in slide-in-from-bottom duration-500">
           <button
             onClick={() => {
               alert("Ciclo processado com sucesso! \n\nTodas as leituras foram validadas. \nPara iniciar o próximo mês, basta alterar a data no seletor.");
               handleMonthChange(1);
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
-            className="w-full h-16 bg-gradient-to-r from-primary to-pink-600 text-white rounded-[24px] font-black uppercase tracking-[3px] flex items-center justify-center gap-3 shadow-2xl shadow-primary/40 active:scale-[0.98] transition-all"
+            className="pointer-events-auto w-full max-w-sm h-12 bg-gradient-to-r from-primary to-pink-600 text-white rounded-full font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 shadow-xl shadow-primary/30 active:scale-[0.98] transition-all"
           >
-            <span className="material-symbols-outlined">verified</span>
+            <span className="material-symbols-outlined text-lg">verified</span>
             Processar Medições
           </button>
         </div>

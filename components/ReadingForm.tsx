@@ -216,23 +216,25 @@ const ReadingForm: React.FC = () => {
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Leitura Atual (m³)</label>
                 <div className="flex flex-col items-end">
                   <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Leitura Anterior</span>
-                  <span className="text-xs font-black text-primary italic">{prevWater.toFixed(3)} m³</span>
+                  <span className="text-xs font-black text-primary italic">{prevWater.toFixed(2)} m³</span>
                 </div>
               </div>
 
               <input
                 type="number"
-                step="0.001"
-                disabled={waterSaved}
+                step="0.01"
                 value={waterValue}
-                onChange={(e) => setWaterValue(e.target.value)}
-                placeholder="0.000"
+                onChange={(e) => {
+                  setWaterValue(e.target.value);
+                  if (waterSaved) setWaterSaved(false);
+                }}
+                placeholder="0.00"
                 className="w-full h-20 bg-slate-50 dark:bg-gray-800 border-none rounded-[24px] text-3xl font-black px-6 focus:ring-4 focus:ring-primary/5 dark:text-white disabled:opacity-50 placeholder:text-slate-200 transition-all text-center"
               />
 
               <button
                 onClick={handleSaveWater}
-                disabled={waterSaved || !waterValue}
+                disabled={!waterValue || (waterSaved && !waterValue)}
                 className={`w-full h-16 rounded-[24px] font-black uppercase tracking-[3px] text-xs shadow-xl transition-all flex items-center justify-center gap-3 ${waterSaved ? 'bg-green-500 text-white shadow-green-500/30' : 'bg-primary/20 text-primary border border-primary/10'
                   } disabled:opacity-30 active:scale-95`}
               >
@@ -240,11 +242,7 @@ const ReadingForm: React.FC = () => {
                 {waterSaved ? 'Salvo com Sucesso' : 'Salvar Água'}
               </button>
 
-              {waterSaved && (
-                <button onClick={() => setWaterSaved(false)} className="w-full text-[9px] font-black text-slate-300 uppercase tracking-[2px] text-center hover:text-primary transition-colors">
-                  Alterar Medição
-                </button>
-              )}
+
             </div>
           </div>
         </section>
@@ -278,16 +276,18 @@ const ReadingForm: React.FC = () => {
               <input
                 type="number"
                 step="0.001"
-                disabled={gasSaved}
                 value={gasValue}
-                onChange={(e) => setGasValue(e.target.value)}
+                onChange={(e) => {
+                  setGasValue(e.target.value);
+                  if (gasSaved) setGasSaved(false);
+                }}
                 placeholder="0.000"
                 className="w-full h-20 bg-slate-50 dark:bg-gray-800 border-none rounded-[24px] text-3xl font-black px-6 focus:ring-4 focus:ring-orange-500/5 dark:text-white disabled:opacity-50 placeholder:text-slate-200 transition-all text-center"
               />
 
               <button
                 onClick={handleSaveGas}
-                disabled={gasSaved || !gasValue}
+                disabled={!gasValue || (gasSaved && !gasValue)}
                 className={`w-full h-16 rounded-[24px] font-black uppercase tracking-[3px] text-xs shadow-xl transition-all flex items-center justify-center gap-3 ${gasSaved ? 'bg-green-500 text-white shadow-green-500/30' : 'bg-orange-600/20 text-orange-600 border border-orange-600/10'
                   } disabled:opacity-30 active:scale-95`}
               >
@@ -295,11 +295,7 @@ const ReadingForm: React.FC = () => {
                 {gasSaved ? 'Salvo com Sucesso' : 'Salvar Gás'}
               </button>
 
-              {gasSaved && (
-                <button onClick={() => setGasSaved(false)} className="w-full text-[9px] font-black text-slate-300 uppercase tracking-[2px] text-center hover:text-orange-600 transition-colors">
-                  Alterar Medição
-                </button>
-              )}
+
             </div>
           </div>
         </section>
