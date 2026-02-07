@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { storage, MOCK_READINGS } from '../data';
+import { storage } from '../data';
 import { ReadingStatus } from '../types';
 import { reportService } from '../services/reportService';
 
@@ -68,25 +68,16 @@ const ApartmentList: React.FC = () => {
   const handleDownloadReport = (type: string) => {
     setIsExporting(true);
 
-    // Collect all data (mock + local)
-    const allReadings = [...MOCK_READINGS];
-    apartments.forEach(ap => {
-      const water = storage.getReading(ap.id, 'water');
-      const gas = storage.getReading(ap.id, 'gas');
-      if (water) allReadings.push({ id: `temp_w_${ap.id}`, apartmentId: ap.id, type: 'water', previousValue: water.previousValue || 0, currentValue: parseFloat(water.value), date: water.displayDate, status: ReadingStatus.LIDO });
-      if (gas) allReadings.push({ id: `temp_g_${ap.id}`, apartmentId: ap.id, type: 'gas', previousValue: gas.previousValue || 0, currentValue: parseFloat(gas.value), date: gas.displayDate, status: ReadingStatus.LIDO });
-    });
-
     // Filter based on selected type/month
-    let filteredReadings = allReadings;
+    let filteredReadings = [...savedReadings];
 
     setTimeout(() => {
       try {
         if (type === 'Relatório Mensal PDF' || type === 'Planilha Excel' || type === 'Consumo Água' || type === 'Consumo Gás') {
           // Filter by selected month
           const currentYear = new Date().getFullYear();
-          filteredReadings = allReadings.filter(r => {
-            const d = new Date(r.date.split(' ')[0].split('/').reverse().join('-'));
+          filteredReadings = savedReadings.filter(r => {
+            const d = new Date(r.date);
             return d.getMonth() === selectedMonth && d.getFullYear() === currentYear;
           });
 
@@ -114,13 +105,13 @@ const ApartmentList: React.FC = () => {
             return;
           }
           const apt = apartments.find(a => a.id === individualFilter.aptId);
-          let readings = allReadings.filter(r => r.apartmentId === individualFilter.aptId);
+          let readings = savedReadings.filter(r => r.apartment_id === individualFilter.aptId);
 
           if (individualFilter.startDate && individualFilter.endDate) {
             const start = new Date(individualFilter.startDate).getTime();
             const end = new Date(individualFilter.endDate).getTime();
             readings = readings.filter(r => {
-              const d = new Date(r.date.split(' ')[0].split('/').reverse().join('-')).getTime();
+              const d = new Date(r.date).getTime();
               return d >= start && d <= end;
             });
           }

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { storage } from '../data';
+import { supabase } from '../lib/supabase';
 import { Apartment } from '../types';
 
 const ReadingForm: React.FC = () => {
@@ -21,52 +21,111 @@ const ReadingForm: React.FC = () => {
 
   useEffect(() => {
     if (id) {
-      const apts = storage.getApartments();
-      const found = apts.find(ap => ap.id === id);
-      setApartment(found || null);
+      const fetchData = async () => {
+        // Fetch Apartment Data
+        const { data: aptData } = await supabase
+          .from('apartments')
+          .select('*')
+          .eq('id', id)
+          .single();
 
-      // Busca leituras salvas (rascunho da sessão atual)
-      const savedWater = storage.getReading(id, 'water');
-      if (savedWater) {
-        setWaterValue(savedWater.value);
-        setWaterSaved(true);
-      }
+        if (aptData) {
+          setApartment({
+            ...aptData,
+            residentName: aptData.resident_name,
+            residentRole: aptData.resident_role,
+            avatarUrl: aptData.avatar_url
+          });
+        }
 
-      const savedGas = storage.getReading(id, 'gas');
-      if (savedGas) {
-        setGasValue(savedGas.value);
-        setGasSaved(true);
-      }
+        // Fetch current month readings (drafts/saved)
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
 
-      // Busca leituras anteriores (histórico do banco)
-      setPrevWater(storage.getPreviousReadingValue(id, 'water'));
-      setPrevGas(storage.getPreviousReadingValue(id, 'gas'));
+        const { data: reads } = await supabase
+          .from('readings')
+          .select('*')
+          .eq('apartment_id', id)
+          .gte('date', startOfMonth.toISOString());
+
+        if (reads) {
+          const water = reads.find(r => r.type === 'water');
+          if (water && water.current_value) {
+            setWaterValue(String(water.current_value));
+            setWaterSaved(true);
+          }
+          const gas = reads.find(r => r.type === 'gas');
+          if (gas && gas.current_value) {
+            setGasValue(String(gas.current_value));
+            setGasSaved(true);
+          }
+        }
+
+        // Fetch previous reading for validation
+        const { data: prevReads } = await supabase
+          .from('readings')
+          .select('*')
+          .eq('apartment_id', id)
+          .lt('date', startOfMonth.toISOString())
+          .order('date', { ascending: false });
+
+        if (prevReads) {
+          const prevWaterRead = prevReads.find(r => r.type === 'water');
+          if (prevWaterRead) setPrevWater(Number(prevWaterRead.current_value || 0));
+          const prevGasRead = prevReads.find(r => r.type === 'gas');
+          if (prevGasRead) setPrevGas(Number(prevGasRead.current_value || 0));
+        }
+      };
+      fetchData();
     }
   }, [id]);
 
   if (!apartment) return <div className="p-10 text-center text-slate-500 font-bold">Unidade não encontrada.</div>;
 
-  const handleSaveWater = () => {
+  const handleSaveWater = async () => {
     if (id && waterValue) {
-      if (parseFloat(waterValue) < prevWater) {
+      const currentVal = parseFloat(waterValue);
+      if (currentVal < prevWater) {
         if (!confirm(`Atenção: A leitura atual (${waterValue}) é menor que a anterior (${prevWater}). Deseja salvar mesmo assim?`)) {
           return;
         }
       }
-      storage.saveReading(id, 'water', waterValue);
-      setWaterSaved(true);
+
+      const { error } = await supabase.from('readings').upsert({
+        apartment_id: id,
+        type: 'water',
+        previous_value: prevWater,
+        current_value: currentVal,
+        date: new Date().toISOString(),
+        status: 'LIDO'
+      }, { onConflict: 'apartment_id, type, date' }); // Assuming we might want to prevent duplicates per day or handle it via a unique constraint
+
+      if (error) alert('Erro ao salvar: ' + error.message);
+      else setWaterSaved(true);
     }
   };
 
-  const handleSaveGas = () => {
+  const handleSaveGas = async () => {
     if (id && gasValue) {
-      if (parseFloat(gasValue) < prevGas) {
+      const currentVal = parseFloat(gasValue);
+      if (currentVal < prevGas) {
         if (!confirm(`Atenção: A leitura atual (${gasValue}) é menor que a anterior (${prevGas}). Deseja salvar mesmo assim?`)) {
           return;
         }
       }
-      storage.saveReading(id, 'gas', gasValue);
-      setGasSaved(true);
+
+      const { error } = await supabase.from('readings').upsert({
+        apartment_id: id,
+        type: 'gas',
+        previous_value: prevGas,
+        current_value: currentVal,
+        date: new Date().toISOString(),
+        status: 'LIDO'
+      });
+
+      if (error) alert('Erro ao salvar: ' + error.message);
+      else setGasSaved(true);
     }
   };
 
@@ -84,7 +143,7 @@ const ReadingForm: React.FC = () => {
       </header>
 
       <main className="p-5 space-y-6">
-        
+
         {/* WATER SECTION */}
         <section className={`transition-all duration-500 ${waterSaved ? 'opacity-80 scale-[0.98]' : ''}`}>
           <div className="bg-white dark:bg-surface-dark rounded-[40px] p-7 shadow-sm border border-white dark:border-gray-800 space-y-6">
@@ -104,15 +163,15 @@ const ReadingForm: React.FC = () => {
 
             <div className="space-y-5">
               <div className="flex justify-between items-end px-1">
-                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Leitura Atual (m³)</label>
-                 <div className="flex flex-col items-end">
-                    <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Leitura Anterior</span>
-                    <span className="text-xs font-black text-primary italic">{prevWater.toFixed(3)} m³</span>
-                 </div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Leitura Atual (m³)</label>
+                <div className="flex flex-col items-end">
+                  <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Leitura Anterior</span>
+                  <span className="text-xs font-black text-primary italic">{prevWater.toFixed(3)} m³</span>
+                </div>
               </div>
-              
-              <input 
-                type="number" 
+
+              <input
+                type="number"
                 step="0.001"
                 disabled={waterSaved}
                 value={waterValue}
@@ -121,17 +180,16 @@ const ReadingForm: React.FC = () => {
                 className="w-full h-20 bg-slate-50 dark:bg-gray-800 border-none rounded-[24px] text-3xl font-black px-6 focus:ring-4 focus:ring-primary/5 dark:text-white disabled:opacity-50 placeholder:text-slate-200 transition-all text-center"
               />
 
-              <button 
+              <button
                 onClick={handleSaveWater}
                 disabled={waterSaved || !waterValue}
-                className={`w-full h-16 rounded-[24px] font-black uppercase tracking-[3px] text-xs shadow-xl transition-all flex items-center justify-center gap-3 ${
-                  waterSaved ? 'bg-green-500 text-white shadow-green-500/30' : 'bg-primary/20 text-primary border border-primary/10'
-                } disabled:opacity-30 active:scale-95`}
+                className={`w-full h-16 rounded-[24px] font-black uppercase tracking-[3px] text-xs shadow-xl transition-all flex items-center justify-center gap-3 ${waterSaved ? 'bg-green-500 text-white shadow-green-500/30' : 'bg-primary/20 text-primary border border-primary/10'
+                  } disabled:opacity-30 active:scale-95`}
               >
                 <span className="material-symbols-outlined">{waterSaved ? 'task_alt' : 'save_as'}</span>
                 {waterSaved ? 'Salvo com Sucesso' : 'Salvar Água'}
               </button>
-              
+
               {waterSaved && (
                 <button onClick={() => setWaterSaved(false)} className="w-full text-[9px] font-black text-slate-300 uppercase tracking-[2px] text-center hover:text-primary transition-colors">
                   Alterar Medição
@@ -160,15 +218,15 @@ const ReadingForm: React.FC = () => {
 
             <div className="space-y-5">
               <div className="flex justify-between items-end px-1">
-                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Leitura Atual (m³)</label>
-                 <div className="flex flex-col items-end">
-                    <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Leitura Anterior</span>
-                    <span className="text-xs font-black text-orange-600 italic">{prevGas.toFixed(3)} m³</span>
-                 </div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Leitura Atual (m³)</label>
+                <div className="flex flex-col items-end">
+                  <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Leitura Anterior</span>
+                  <span className="text-xs font-black text-orange-600 italic">{prevGas.toFixed(3)} m³</span>
+                </div>
               </div>
 
-              <input 
-                type="number" 
+              <input
+                type="number"
                 step="0.001"
                 disabled={gasSaved}
                 value={gasValue}
@@ -177,12 +235,11 @@ const ReadingForm: React.FC = () => {
                 className="w-full h-20 bg-slate-50 dark:bg-gray-800 border-none rounded-[24px] text-3xl font-black px-6 focus:ring-4 focus:ring-orange-500/5 dark:text-white disabled:opacity-50 placeholder:text-slate-200 transition-all text-center"
               />
 
-              <button 
+              <button
                 onClick={handleSaveGas}
                 disabled={gasSaved || !gasValue}
-                className={`w-full h-16 rounded-[24px] font-black uppercase tracking-[3px] text-xs shadow-xl transition-all flex items-center justify-center gap-3 ${
-                  gasSaved ? 'bg-green-500 text-white shadow-green-500/30' : 'bg-orange-600/20 text-orange-600 border border-orange-600/10'
-                } disabled:opacity-30 active:scale-95`}
+                className={`w-full h-16 rounded-[24px] font-black uppercase tracking-[3px] text-xs shadow-xl transition-all flex items-center justify-center gap-3 ${gasSaved ? 'bg-green-500 text-white shadow-green-500/30' : 'bg-orange-600/20 text-orange-600 border border-orange-600/10'
+                  } disabled:opacity-30 active:scale-95`}
               >
                 <span className="material-symbols-outlined">{gasSaved ? 'task_alt' : 'save_as'}</span>
                 {gasSaved ? 'Salvo com Sucesso' : 'Salvar Gás'}
@@ -199,12 +256,12 @@ const ReadingForm: React.FC = () => {
 
         {/* Completion area */}
         <div className="text-center py-4">
-           <button 
-             onClick={() => navigate('/readings')}
-             className="w-full h-16 bg-slate-900 text-white rounded-[24px] font-black uppercase tracking-[4px] text-xs shadow-2xl active:scale-95 transition-all"
-           >
-             Voltar para Lista
-           </button>
+          <button
+            onClick={() => navigate('/readings')}
+            className="w-full h-16 bg-slate-900 text-white rounded-[24px] font-black uppercase tracking-[4px] text-xs shadow-2xl active:scale-95 transition-all"
+          >
+            Voltar para Lista
+          </button>
         </div>
 
       </main>
