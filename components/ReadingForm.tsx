@@ -1,12 +1,17 @@
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Apartment } from '../types';
 
 const ReadingForm: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const dateParam = searchParams.get('date');
+  // Use passed date or default to current date
+  const referenceDate = dateParam ? new Date(dateParam) : new Date();
+
   const [apartment, setApartment] = useState<Apartment | null>(null);
 
   // States for Water
@@ -41,15 +46,31 @@ const ReadingForm: React.FC = () => {
         }
 
         // Fetch current month readings (drafts/saved)
-        const startOfMonth = new Date();
+        // Use the reference date to determine the month
+        const startOfMonth = new Date(referenceDate);
         startOfMonth.setDate(1);
         startOfMonth.setHours(0, 0, 0, 0);
+
+        // End of month is useful if we want to limit duplicates strictly to that month context, 
+        // but existing logic uses gte startOfMonth which implies "that month or later". 
+        // For historical data, we should probably check within the specific month. 
+        // But to keep consistency with "latest reading for that month", let's start with startOfMonth.
+        // Actually, better: filter strict month range if date is provided.
+        // For now, let's keep the logic consistent: get readings for the specific month.
+
+        // However, if we are in "Feb", we want readings for "Feb".
+        // The original logic was gte startOfMonth (reading current month). 
+        // If we go back to Jan, we want readings for Jan.
+
+        const nextMonth = new Date(startOfMonth);
+        nextMonth.setMonth(nextMonth.getMonth() + 1);
 
         const { data: reads } = await supabase
           .from('readings')
           .select('*')
           .eq('apartment_id', id)
-          .gte('date', startOfMonth.toISOString());
+          .gte('date', startOfMonth.toISOString())
+          .lt('date', nextMonth.toISOString());
 
         if (reads) {
           const water = reads.find(r => r.type === 'water');
@@ -106,7 +127,7 @@ const ReadingForm: React.FC = () => {
         type: 'water',
         previous_value: prevWater,
         current_value: currentVal,
-        date: new Date().toISOString(),
+        date: referenceDate.toISOString(),
         status: 'LIDO'
       };
 
@@ -139,7 +160,7 @@ const ReadingForm: React.FC = () => {
         type: 'gas',
         previous_value: prevGas,
         current_value: currentVal,
-        date: new Date().toISOString(),
+        date: referenceDate.toISOString(),
         status: 'LIDO'
       };
 

@@ -1,26 +1,36 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { storage } from '../data';
-import { ReadingStatus } from '../types';
 import { reportService } from '../services/reportService';
 
 const ApartmentList: React.FC = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'todos' | 'pendente' | 'parcial' | 'concluido'>('todos');
   const [savedReadings, setSavedReadings] = useState<any[]>([]);
   const [isReportsOpen, setIsReportsOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [reportType, setReportType] = useState<'mensal' | 'individual'>('mensal');
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+
+  // Global filter state for current view
+  const [currentReferenceDate, setCurrentReferenceDate] = useState(new Date());
+
   const [individualFilter, setIndividualFilter] = useState({
     aptId: '',
     startDate: '',
     endDate: ''
   });
-  const navigate = useNavigate();
+
   const [apartments, setApartments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Derived state for selected month index (0-11) for report dropdown
+  const [selectedMonth, setSelectedMonth] = useState(currentReferenceDate.getMonth());
+
+  // Sync selectedMonth when currentReferenceDate changes
+  useEffect(() => {
+    setSelectedMonth(currentReferenceDate.getMonth());
+  }, [currentReferenceDate]);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -46,13 +56,26 @@ const ApartmentList: React.FC = () => {
   }, []);
 
   const getAptStatus = (id: string) => {
-    const hasWater = savedReadings.some(r => r.apartment_id === id && r.type === 'water');
-    const hasGas = savedReadings.some(r => r.apartment_id === id && r.type === 'gas');
+    // Filter readings by the current reference month/year
+    const relevantReadings = savedReadings.filter(r => {
+      const rDate = new Date(r.date);
+      return rDate.getMonth() === currentReferenceDate.getMonth() &&
+        rDate.getFullYear() === currentReferenceDate.getFullYear();
+    });
+
+    const hasWater = relevantReadings.some(r => r.apartment_id === id && r.type === 'water');
+    const hasGas = relevantReadings.some(r => r.apartment_id === id && r.type === 'gas');
     const isFullyDone = hasWater && hasGas;
     const isPartial = (hasWater || hasGas) && !isFullyDone;
     const isPending = !hasWater && !hasGas;
 
     return { hasWater, hasGas, isFullyDone, isPartial, isPending };
+  };
+
+  const calculateCompletion = () => {
+    if (apartments.length === 0) return 0;
+    const completed = apartments.filter(ap => getAptStatus(ap.id).isFullyDone).length;
+    return (completed / apartments.length) * 100;
   };
 
   const filteredApartments = apartments.filter(ap => {
@@ -134,6 +157,15 @@ const ApartmentList: React.FC = () => {
     { id: 'concluido', label: 'Concluídos', icon: 'task_alt' },
   ];
 
+  const completionPercent = calculateCompletion();
+  const isAllComplete = completionPercent === 100 && apartments.length > 0;
+
+  const handleMonthChange = (offset: number) => {
+    const newDate = new Date(currentReferenceDate);
+    newDate.setMonth(newDate.getMonth() + offset);
+    setCurrentReferenceDate(newDate);
+  };
+
   return (
     <div className="scroll-container bg-slate-50 dark:bg-background-dark">
       <div className="pt-safe pb-32">
@@ -151,7 +183,43 @@ const ApartmentList: React.FC = () => {
             </button>
           </div>
 
-          <div className="mt-5 relative">
+          {/* Month Selector */}
+          <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-1.5 rounded-2xl shadow-sm border border-slate-100 dark:border-gray-700 mt-4 mb-2">
+            <button
+              onClick={() => handleMonthChange(-1)}
+              className="size-10 flex items-center justify-center text-slate-400 hover:text-primary active:scale-95 transition-all"
+            >
+              <span className="material-symbols-outlined">chevron_left</span>
+            </button>
+            <div className="text-center">
+              <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest block">Mês de Referência</span>
+              <span className="text-sm font-black text-slate-700 dark:text-white uppercase tracking-tighter">
+                {currentReferenceDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+              </span>
+            </div>
+            <button
+              onClick={() => handleMonthChange(1)}
+              className="size-10 flex items-center justify-center text-slate-400 hover:text-primary active:scale-95 transition-all"
+            >
+              <span className="material-symbols-outlined">chevron_right</span>
+            </button>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="px-1 mb-4">
+            <div className="flex justify-between items-end mb-1">
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Progresso do Mês</span>
+              <span className="text-[10px] font-black text-primary">{Math.round(completionPercent)}%</span>
+            </div>
+            <div className="h-2 w-full bg-slate-100 dark:bg-gray-800 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary transition-all duration-1000 ease-out rounded-full"
+                style={{ width: `${completionPercent}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="relative">
             <input
               type="text"
               placeholder="Buscar apto ou morador..."
@@ -191,7 +259,7 @@ const ApartmentList: React.FC = () => {
               return (
                 <div
                   key={ap.id}
-                  onClick={() => navigate(`/readings/${ap.id}`)}
+                  onClick={() => navigate(`/readings/${ap.id}?date=${currentReferenceDate.toISOString()}`)}
                   className="flex items-center gap-3 bg-white dark:bg-surface-dark p-4 rounded-[2rem] border border-white dark:border-gray-800 active:scale-[0.98] transition-all cursor-pointer shadow-sm relative overflow-hidden"
                 >
                   <div className="size-16 rounded-2xl bg-slate-50 dark:bg-gray-800 flex flex-col items-center justify-center relative border border-slate-100 dark:border-gray-700 flex-shrink-0 shadow-inner">
@@ -225,6 +293,23 @@ const ApartmentList: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Process Button - Only appears when 100% complete */}
+      {isAllComplete && (
+        <div className="fixed bottom-0 left-0 right-0 p-6 pb-12 bg-white/90 dark:bg-background-dark/90 backdrop-blur-xl border-t dark:border-gray-800 z-30 animate-in slide-in-from-bottom duration-500">
+          <button
+            onClick={() => {
+              alert("Ciclo processado com sucesso! \n\nTodas as leituras foram validadas. \nPara iniciar o próximo mês, basta alterar a data no seletor.");
+              handleMonthChange(1);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            className="w-full h-16 bg-gradient-to-r from-primary to-pink-600 text-white rounded-[24px] font-black uppercase tracking-[3px] flex items-center justify-center gap-3 shadow-2xl shadow-primary/40 active:scale-[0.98] transition-all"
+          >
+            <span className="material-symbols-outlined">verified</span>
+            Processar Medições
+          </button>
+        </div>
+      )}
 
       {isReportsOpen && (
         <div className="fixed inset-0 z-[60] bg-primary/20 backdrop-blur-md flex items-end justify-center px-2 pb-2">
