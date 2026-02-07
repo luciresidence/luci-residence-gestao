@@ -5,28 +5,45 @@ import { MOCK_READINGS } from '../data';
 
 const Logo = () => (
   <div className="flex flex-col items-center">
-    <svg width="60" height="45" viewBox="0 0 200 150" fill="none" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-sm">
+    <svg width="100" height="75" viewBox="0 0 200 150" fill="none" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-sm">
       <ellipse cx="85" cy="70" rx="35" ry="50" fill="#a66384" fillOpacity="0.7" transform="rotate(-15 85 70)" />
       <ellipse cx="115" cy="70" rx="35" ry="50" fill="#802e53" fillOpacity="0.8" transform="rotate(15 115 70)" />
     </svg>
-    <h1 className="text-xs font-bold text-primary uppercase tracking-tighter -mt-1">Luci Berkembrock</h1>
-    <div className="h-[1px] w-16 bg-primary/20 my-0.5"></div>
-    <p className="text-[6px] font-semibold text-primary/60 uppercase tracking-[3px]">Residence</p>
+    <h1 className="text-lg font-bold text-primary uppercase tracking-tighter -mt-3">Luci Berkembrock</h1>
+    <div className="h-[2px] w-24 bg-primary/20 my-1"></div>
+    <p className="text-[8px] font-semibold text-primary/60 uppercase tracking-[4px]">Residence</p>
   </div>
 );
 
 import { supabase } from '../lib/supabase';
 
 const Dashboard: React.FC = () => {
-  const [currentDate, setCurrentDate] = useState(new Date(2023, 9, 1)); // Iniciando em Outubro 2023 para bater com o mock/seed
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [insight, setInsight] = useState<string>('Analisando dados do mês...');
   const [loading, setLoading] = useState(true);
+  const [rankings, setRankings] = useState<{ water: any[], gas: any[] }>({ water: [], gas: [] });
   const [summary, setSummary] = useState({
     water: 0,
     gas: 0,
     waterChange: 0,
     gasChange: 0
   });
+
+  useEffect(() => {
+    const fetchInitialDate = async () => {
+      const { data } = await supabase
+        .from('readings')
+        .select('date')
+        .order('date', { ascending: false })
+        .limit(1);
+      
+      if (data && data.length > 0) {
+        const lastDate = new Date(data[0].date);
+        setCurrentDate(new Date(lastDate.getFullYear(), lastDate.getMonth(), 1));
+      }
+    };
+    fetchInitialDate();
+  }, []);
 
   const fetchDashboardData = async (date: Date) => {
     setLoading(true);
@@ -91,6 +108,26 @@ const Dashboard: React.FC = () => {
       setInsight(res);
     } else {
       setInsight('Sem dados de leitura para este mês.');
+    }
+
+    // Rankings Logic
+    const { data: apartments } = await supabase.from('apartments').select('*');
+    if (apartments && currentReadings) {
+      const calcRank = (type: 'water' | 'gas') => {
+        const usagePerUnit = (currentReadings || [])
+          .filter(r => r.type === type && r.current_value)
+          .map(r => {
+            const apt = apartments.find(a => String(a.id) === String(r.apartment_id));
+            return {
+              unit: apt ? `${apt.number}${apt.block}` : '?',
+              usage: Number(r.current_value) - Number(r.previous_value)
+            };
+          })
+          .sort((a, b) => b.usage - a.usage)
+          .slice(0, 3);
+        return usagePerUnit;
+      };
+      setRankings({ water: calcRank('water'), gas: calcRank('gas') });
     }
 
     setLoading(false);
@@ -205,6 +242,55 @@ const Dashboard: React.FC = () => {
                 <span className="truncate">
                   {summary.gasChange > 0 ? '+' : ''}{summary.gasChange.toFixed(1)}% {summary.gasChange <= 0 ? 'Estável' : 'Alerta'}
                 </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Rankings Section */}
+          <div className="space-y-4 pt-2">
+            <h3 className="text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest pl-2">Ranking de Consumo</h3>
+            
+            <div className="grid grid-cols-1 gap-4">
+              {/* Water Ranking */}
+              <div className="bg-white dark:bg-surface-dark p-6 rounded-[2.5rem] shadow-sm border border-slate-50 dark:border-gray-800">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="material-symbols-outlined text-primary text-sm fill-1">water_drop</span>
+                  <span className="text-[9px] font-bold text-slate-800 dark:text-gray-300 uppercase tracking-widest">Top 3 Água</span>
+                </div>
+                <div className="space-y-3">
+                  {rankings.water.length > 0 ? rankings.water.map((item, idx) => (
+                    <div key={idx} className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className={`size-5 rounded-full flex items-center justify-center text-[10px] font-black ${idx === 0 ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-gray-800 text-slate-400'}`}>
+                          {idx + 1}
+                        </span>
+                        <span className="text-xs font-bold text-slate-700 dark:text-gray-200">Unidade {item.unit}</span>
+                      </div>
+                      <span className="text-xs font-black text-primary">{item.usage.toFixed(1)} m³</span>
+                    </div>
+                  )) : <p className="text-[10px] text-slate-400 text-center py-2 italic font-medium">Sem dados suficentes</p>}
+                </div>
+              </div>
+
+              {/* Gas Ranking */}
+              <div className="bg-white dark:bg-surface-dark p-6 rounded-[2.5rem] shadow-sm border border-slate-50 dark:border-gray-800">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="material-symbols-outlined text-gas text-sm fill-1">local_fire_department</span>
+                  <span className="text-[9px] font-bold text-slate-800 dark:text-gray-300 uppercase tracking-widest">Top 3 Gás</span>
+                </div>
+                <div className="space-y-3">
+                  {rankings.gas.length > 0 ? rankings.gas.map((item, idx) => (
+                    <div key={idx} className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className={`size-5 rounded-full flex items-center justify-center text-[10px] font-black ${idx === 0 ? 'bg-gas text-white' : 'bg-slate-100 dark:bg-gray-800 text-slate-400'}`}>
+                          {idx + 1}
+                        </span>
+                        <span className="text-xs font-bold text-slate-700 dark:text-gray-200">Unidade {item.unit}</span>
+                      </div>
+                      <span className="text-xs font-black text-gas">{item.usage.toFixed(1)} m³</span>
+                    </div>
+                  )) : <p className="text-[10px] text-slate-400 text-center py-2 italic font-medium">Sem dados suficentes</p>}
+                </div>
               </div>
             </div>
           </div>
