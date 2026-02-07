@@ -194,23 +194,30 @@ const ApartmentList: React.FC = () => {
                   onClick={() => navigate(`/readings/${ap.id}`)}
                   className="flex items-center gap-3 bg-white dark:bg-surface-dark p-4 rounded-[2rem] border border-white dark:border-gray-800 active:scale-[0.98] transition-all cursor-pointer shadow-sm relative overflow-hidden"
                 >
-                  <div className="size-12 rounded-xl bg-slate-50 dark:bg-gray-800 flex items-center justify-center relative border border-slate-100 dark:border-gray-700 flex-shrink-0">
-                    <span className="font-bold text-primary text-xs tracking-tighter">{ap.number}</span>
+                  <div className="size-16 rounded-2xl bg-slate-50 dark:bg-gray-800 flex flex-col items-center justify-center relative border border-slate-100 dark:border-gray-700 flex-shrink-0 shadow-inner">
+                    <span className="font-black text-primary text-lg tracking-tighter leading-none">{ap.number}</span>
+                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Bl {ap.block}</span>
                     {isFullyDone && (
-                      <div className="absolute -top-1 -right-1 size-5 bg-green-500 rounded-full flex items-center justify-center border-2 border-white dark:border-surface-dark shadow-sm">
-                        <span className="material-symbols-outlined text-[8px] text-white font-bold">check</span>
+                      <div className="absolute -top-1 -right-1 size-6 bg-green-500 rounded-full flex items-center justify-center border-2 border-white dark:border-surface-dark shadow-sm">
+                        <span className="material-symbols-outlined text-[10px] text-white font-black">check</span>
                       </div>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-center">
-                      <p className="font-bold text-slate-900 dark:text-white uppercase tracking-tighter text-base">Apto {ap.number}</p>
-                      <div className="flex gap-2">
-                        <span className={`material-symbols-outlined text-[16px] ${hasWater ? 'text-blue-500 fill-1' : 'text-slate-100 dark:text-gray-800'}`}>water_drop</span>
-                        <span className={`material-symbols-outlined text-[16px] ${hasGas ? 'text-orange-500 fill-1' : 'text-slate-100 dark:text-gray-800'}`}>local_fire_department</span>
+                    <div className="flex justify-between items-start">
+                      <div className="space-y-0.5">
+                        <p className="font-black text-slate-900 dark:text-white uppercase tracking-tighter text-lg leading-tight truncate">{ap.residentName}</p>
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 bg-primary/5 text-primary text-[8px] font-black uppercase tracking-widest rounded-md border border-primary/10">
+                            {ap.residentRole}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 shrink-0 pt-1">
+                        <span className={`material-symbols-outlined text-[20px] ${hasWater ? 'text-blue-500 fill-1' : 'text-slate-100 dark:text-gray-800'}`}>water_drop</span>
+                        <span className={`material-symbols-outlined text-[20px] ${hasGas ? 'text-orange-500 fill-1' : 'text-slate-100 dark:text-gray-800'}`}>local_fire_department</span>
                       </div>
                     </div>
-                    <p className="text-[8px] text-slate-400 truncate font-semibold uppercase tracking-widest">{ap.residentName}</p>
                   </div>
                 </div>
               );
