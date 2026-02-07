@@ -292,24 +292,25 @@ const ApartmentList: React.FC = () => {
             })
           )}
         </div>
+
+        {/* Process Button - Appears at the end of the list when 100% complete */}
+        {isAllComplete && (
+          <div className="px-4 pb-8 flex justify-center animate-in slide-in-from-bottom duration-500">
+            <button
+              onClick={() => {
+                alert("Ciclo processado com sucesso! \n\nTodas as leituras foram validadas. \nPara iniciar o próximo mês, basta alterar a data no seletor.");
+                handleMonthChange(1);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="w-full max-w-sm h-12 bg-gradient-to-r from-primary to-pink-600 text-white rounded-full font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 shadow-xl shadow-primary/30 active:scale-[0.98] transition-all"
+            >
+              <span className="material-symbols-outlined text-lg">verified</span>
+              Processar Medições
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Process Button - Only appears when 100% complete */}
-      {isAllComplete && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 pb-8 z-30 flex justify-center pointer-events-none animate-in slide-in-from-bottom duration-500">
-          <button
-            onClick={() => {
-              alert("Ciclo processado com sucesso! \n\nTodas as leituras foram validadas. \nPara iniciar o próximo mês, basta alterar a data no seletor.");
-              handleMonthChange(1);
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            className="pointer-events-auto w-full max-w-sm h-12 bg-gradient-to-r from-primary to-pink-600 text-white rounded-full font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 shadow-xl shadow-primary/30 active:scale-[0.98] transition-all"
-          >
-            <span className="material-symbols-outlined text-lg">verified</span>
-            Processar Medições
-          </button>
-        </div>
-      )}
 
       {isReportsOpen && (
         <div className="fixed inset-0 z-[60] bg-primary/20 backdrop-blur-md flex items-end justify-center px-2 pb-2">
