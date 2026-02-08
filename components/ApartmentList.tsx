@@ -97,11 +97,14 @@ const ApartmentList: React.FC = () => {
     setTimeout(() => {
       try {
         if (type === 'Relatório Mensal PDF' || type === 'Planilha Excel' || type === 'Consumo Água' || type === 'Consumo Gás') {
-          // Filter by selected month
-          const currentYear = new Date().getFullYear();
+          // Filter by selected month and reference year
+          const reportYear = currentReferenceDate.getFullYear();
           filteredReadings = savedReadings.filter(r => {
             const d = new Date(r.date);
-            return d.getMonth() === selectedMonth && d.getFullYear() === currentYear;
+            // We use selectedMonth here because the user might change the dropdown in the modal
+            // But for the year, we should stick to the current view's year or allow year selection.
+            // Assuming the modal is for the "current view" context:
+            return d.getMonth() === selectedMonth && d.getFullYear() === reportYear;
           });
 
           if (filteredReadings.length === 0) {

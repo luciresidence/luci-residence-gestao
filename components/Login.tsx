@@ -18,7 +18,6 @@ const Logo = () => (
 import { supabase } from '../lib/supabase';
 
 const Login: React.FC = () => {
-  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -32,25 +31,12 @@ const Login: React.FC = () => {
     setSuccess(null);
     setIsLoading(true);
 
-    if (isSignUp) {
-      const { error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-      if (signUpError) {
-        setError(signUpError.message);
-      } else {
-        setSuccess('Cadastro realizado! Verifique seu e-mail para confirmar.');
-        setIsSignUp(false);
-      }
-    } else {
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (authError) {
-        setError(authError.message === 'Invalid login credentials' ? 'E-mail ou senha incorretos' : authError.message);
-      }
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (authError) {
+      setError(authError.message === 'Invalid login credentials' ? 'E-mail ou senha incorretos' : authError.message);
     }
     setIsLoading(false);
   };
@@ -62,14 +48,14 @@ const Login: React.FC = () => {
           <Logo />
           <div className="mt-6 sm:mt-8 text-center">
             <h1 className="text-base sm:text-lg font-bold text-slate-800 uppercase tracking-tighter">
-              {isSignUp ? 'Criar Nova Conta' : 'Acesso Restrito'}
+              Acesso Restrito
             </h1>
             <p className="text-[8px] sm:text-[9px] text-slate-400 font-semibold uppercase tracking-[2px] sm:tracking-[3px] mt-1">Gestão de Consumo Luci Berkembrock</p>
           </div>
         </div>
 
         <div className="p-6 sm:p-8 space-y-4 sm:space-y-6">
-          <div className="space-y-4">
+          <form onSubmit={handleAuth} className="space-y-4">
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">E-mail</label>
               <input
@@ -92,6 +78,7 @@ const Login: React.FC = () => {
                   className="w-full h-14 px-5 pr-12 rounded-2xl border border-slate-100 bg-slate-50 text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-4 focus:ring-primary/5 transition-all font-semibold text-sm"
                 />
                 <button
+                  type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-primary transition-colors"
                 >
@@ -99,47 +86,31 @@ const Login: React.FC = () => {
                 </button>
               </div>
             </div>
-          </div>
 
-          {error && (
-            <div className="bg-red-50 text-red-500 text-[10px] font-bold uppercase tracking-wider p-3 rounded-xl text-center border border-red-100 animate-in fade-in slide-in-from-top-2 duration-300">
-              {error}
-            </div>
-          )}
+            {error && (
+              <div className="bg-red-50 text-red-500 text-[10px] font-bold uppercase tracking-wider p-3 rounded-xl text-center border border-red-100 animate-in fade-in slide-in-from-top-2 duration-300">
+                {error}
+              </div>
+            )}
 
-          {success && (
-            <div className="bg-emerald-50 text-emerald-600 text-[10px] font-bold uppercase tracking-wider p-3 rounded-xl text-center border border-emerald-100 animate-in fade-in slide-in-from-top-2 duration-300">
-              {success}
-            </div>
-          )}
+            {success && (
+              <div className="bg-emerald-50 text-emerald-600 text-[10px] font-bold uppercase tracking-wider p-3 rounded-xl text-center border border-emerald-100 animate-in fade-in slide-in-from-top-2 duration-300">
+                {success}
+              </div>
+            )}
 
-          <div className="space-y-4">
             <button
-              onClick={() => handleAuth()}
+              type="submit"
               disabled={isLoading}
               className="w-full h-16 bg-primary text-white rounded-[24px] font-bold uppercase tracking-[3px] text-xs flex items-center justify-center gap-2 shadow-xl shadow-primary/20 active:scale-[0.98] transition-all disabled:opacity-70 disabled:grayscale-[0.5]"
             >
               {isLoading ? (
                 <div className="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
-                isSignUp ? 'Finalizar Cadastro' : 'Entrar no Sistema'
+                'Entrar no Sistema'
               )}
             </button>
-
-
-            <div className="text-center">
-              <button
-                onClick={() => {
-                  setIsSignUp(!isSignUp);
-                  setError(null);
-                  setSuccess(null);
-                }}
-                className="text-[10px] font-bold text-primary uppercase tracking-widest hover:underline"
-              >
-                {isSignUp ? 'Já tenho uma conta? Entrar' : 'Não tem conta? Criar conta'}
-              </button>
-            </div>
-          </div>
+          </form>
         </div>
       </div>
     </div>
