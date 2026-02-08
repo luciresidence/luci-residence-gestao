@@ -27,16 +27,35 @@ const UnitList: React.FC = () => {
     const fetchUnits = async () => {
       const { data, error } = await supabase
         .from('apartments')
-        .select('*')
-        .order('number');
+        .select('*');
 
       if (data) {
-        setUnits(data.map(apt => ({
+        const mappedUnits = data.map(apt => ({
           ...apt,
           residentName: apt.resident_name,
           residentRole: apt.resident_role,
           avatarUrl: apt.avatar_url
-        })));
+        }));
+
+        // Ordenação customizada: COND primeiro, depois Bloco A, depois Bloco B
+        const sortedUnits = mappedUnits.sort((a, b) => {
+          // COND sempre primeiro
+          if (a.number === 'COND') return -1;
+          if (b.number === 'COND') return 1;
+
+          // Separar por bloco
+          if (a.block !== b.block) {
+            // Bloco A antes do Bloco B
+            return a.block.localeCompare(b.block);
+          }
+
+          // Dentro do mesmo bloco, ordenar por número
+          const numA = parseInt(a.number) || 0;
+          const numB = parseInt(b.number) || 0;
+          return numA - numB;
+        });
+
+        setUnits(sortedUnits);
       }
     };
     fetchUnits();
@@ -99,7 +118,7 @@ const UnitList: React.FC = () => {
               >
                 <div className="flex items-center gap-4">
                   <div className="size-16 rounded-2xl bg-slate-50 dark:bg-gray-800 flex flex-col items-center justify-center border border-slate-100 dark:border-gray-700 shadow-inner flex-shrink-0">
-                    <span className="text-lg font-black text-primary leading-none">{ap.number}</span>
+                    <span className={`text-lg font-black leading-none ${ap.block === 'B' ? 'text-[#166534]' : 'text-primary'}`}>{ap.number}</span>
                     <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Bl {ap.block}</span>
                   </div>
                   <div className="flex-1 min-w-0">
