@@ -11,6 +11,7 @@ const Navigation: React.FC = () => {
     { label: 'Medições', icon: 'assignment_turned_in', path: '/readings' },
     { label: 'Histórico', icon: 'history', path: '/history' },
     { label: 'Unidades', icon: 'domain', path: '/units' },
+    { label: 'Pedidos', icon: 'how_to_reg', path: '/requests' },
     { label: 'Perfil', icon: 'person', path: '/settings' },
   ];
 
@@ -20,7 +21,7 @@ const Navigation: React.FC = () => {
         {navItems.map(item => {
           const isActive = location.pathname.startsWith(item.path);
           return (
-            <button 
+            <button
               key={item.label}
               onClick={() => navigate(item.path)}
               className={`flex flex-col items-center justify-center w-full h-full transition-all active:opacity-60 ${isActive ? 'text-primary' : 'text-gray-400'}`}

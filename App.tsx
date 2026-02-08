@@ -13,6 +13,7 @@ import Navigation from './components/Navigation';
 import ImagePreview from './components/ImagePreview';
 import Login from './components/Login';
 import ResidentRegistration from './components/ResidentRegistration';
+import RegistrationManager from './components/RegistrationManager';
 import { supabase } from './lib/supabase';
 
 const App: React.FC = () => {
@@ -96,6 +97,7 @@ const App: React.FC = () => {
             <Route path="/units" element={<UnitList />} />
             <Route path="/units/new" element={<UnitRegistration />} />
             <Route path="/units/:id/edit" element={<UnitRegistration />} />
+            <Route path="/requests" element={<RegistrationManager />} />
             <Route path="/residents/:id" element={<ResidentDetails />} />
             <Route path="/settings" element={<Settings toggleDarkMode={toggleDarkMode} isDarkMode={darkMode} onLogout={handleLogout} />} />
           </Routes>
