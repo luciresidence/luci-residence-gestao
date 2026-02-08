@@ -25,9 +25,6 @@ const Login: React.FC = () => {
   const [success, setSuccess] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [sliderPos, setSliderPos] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const sliderRef = useRef<HTMLDivElement>(null);
 
   const handleAuth = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -42,11 +39,9 @@ const Login: React.FC = () => {
       });
       if (signUpError) {
         setError(signUpError.message);
-        setSliderPos(0);
       } else {
         setSuccess('Cadastro realizado! Verifique seu e-mail para confirmar.');
         setIsSignUp(false);
-        setSliderPos(0);
       }
     } else {
       const { error: authError } = await supabase.auth.signInWithPassword({
@@ -55,51 +50,10 @@ const Login: React.FC = () => {
       });
       if (authError) {
         setError(authError.message === 'Invalid login credentials' ? 'E-mail ou senha incorretos' : authError.message);
-        setSliderPos(0);
       }
     }
     setIsLoading(false);
   };
-
-  const handleStart = () => setIsDragging(true);
-  const handleEnd = () => {
-    setIsDragging(false);
-    if (sliderPos > 85) {
-      setSliderPos(100);
-      handleAuth();
-    } else {
-      setSliderPos(0);
-    }
-  };
-
-  const handleMove = (clientX: number) => {
-    if (!isDragging || !sliderRef.current) return;
-    const rect = sliderRef.current.getBoundingClientRect();
-    const x = clientX - rect.left - 24;
-    const percent = Math.min(Math.max(0, (x / (rect.width - 48)) * 100), 100);
-    setSliderPos(percent);
-  };
-
-  useEffect(() => {
-    const onMouseMove = (e: MouseEvent) => handleMove(e.clientX);
-    const onTouchMove = (e: TouchEvent) => handleMove(e.touches[0].clientX);
-    const onMouseUp = handleEnd;
-    const onTouchEnd = handleEnd;
-
-    if (isDragging) {
-      window.addEventListener('mousemove', onMouseMove);
-      window.addEventListener('mouseup', onMouseUp);
-      window.addEventListener('touchmove', onTouchMove);
-      window.addEventListener('touchend', onTouchEnd);
-    }
-
-    return () => {
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-      window.removeEventListener('touchmove', onTouchMove);
-      window.removeEventListener('touchend', onTouchEnd);
-    };
-  }, [isDragging]);
 
   return (
     <div className="min-h-[100dvh] bg-slate-50 flex items-center justify-center p-4 sm:p-6">
@@ -172,30 +126,6 @@ const Login: React.FC = () => {
               )}
             </button>
 
-            {!isSignUp && (
-              <div
-                ref={sliderRef}
-                className="relative w-full h-16 bg-slate-100 rounded-[24px] p-2 flex items-center border border-slate-200"
-              >
-                <div
-                  className="absolute inset-y-0 left-0 bg-primary/10 rounded-[22px] transition-all"
-                  style={{ width: `calc(${sliderPos}% + 48px)` }}
-                />
-                <div className="w-full text-center pr-2 pointer-events-none">
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[2px]">
-                    Deslize para entrar
-                  </p>
-                </div>
-                <div
-                  onMouseDown={handleStart}
-                  onTouchStart={handleStart}
-                  className={`absolute z-10 size-12 bg-white rounded-[20px] shadow-lg flex items-center justify-center text-primary cursor-grab active:cursor-grabbing transition-transform duration-75 border border-slate-100`}
-                  style={{ left: `calc(${sliderPos}% * ( (100% - 48px) / 100) )` }}
-                >
-                  <span className="material-symbols-outlined text-2xl font-bold">arrow_forward</span>
-                </div>
-              </div>
-            )}
 
             <div className="text-center">
               <button
