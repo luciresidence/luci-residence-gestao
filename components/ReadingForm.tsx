@@ -220,17 +220,30 @@ const ReadingForm: React.FC = () => {
                 </div>
               </div>
 
-              <input
-                type="number"
-                step="0.01"
-                value={waterValue}
-                onChange={(e) => {
-                  setWaterValue(e.target.value);
-                  if (waterSaved) setWaterSaved(false);
-                }}
-                placeholder="0.00"
-                className="w-full h-20 bg-slate-50 dark:bg-gray-800 border-none rounded-[24px] text-3xl font-black px-6 focus:ring-4 focus:ring-primary/5 dark:text-white disabled:opacity-50 placeholder:text-slate-200 transition-all text-center"
-              />
+              <div className="flex gap-3">
+                <div className="flex-1 space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Leitura Atual</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={waterValue}
+                    onChange={(e) => {
+                      setWaterValue(e.target.value);
+                      if (waterSaved) setWaterSaved(false);
+                    }}
+                    placeholder="0.00"
+                    className="w-full h-20 bg-slate-50 dark:bg-gray-800 border-none rounded-[24px] text-3xl font-black px-4 focus:ring-4 focus:ring-primary/5 dark:text-white disabled:opacity-50 placeholder:text-slate-200 transition-all text-center"
+                  />
+                </div>
+                <div className="w-1/3 space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Consumo</label>
+                  <div className="w-full h-20 bg-blue-50 dark:bg-blue-900/10 rounded-[24px] flex items-center justify-center border-2 border-blue-100 dark:border-blue-900/20">
+                    <span className="text-xl font-black text-blue-600 dark:text-blue-400">
+                      {waterValue ? (parseFloat(waterValue) - prevWater).toFixed(2) : '--'}
+                    </span>
+                  </div>
+                </div>
+              </div>
 
               <button
                 onClick={handleSaveWater}
@@ -273,17 +286,30 @@ const ReadingForm: React.FC = () => {
                 </div>
               </div>
 
-              <input
-                type="number"
-                step="0.001"
-                value={gasValue}
-                onChange={(e) => {
-                  setGasValue(e.target.value);
-                  if (gasSaved) setGasSaved(false);
-                }}
-                placeholder="0.000"
-                className="w-full h-20 bg-slate-50 dark:bg-gray-800 border-none rounded-[24px] text-3xl font-black px-6 focus:ring-4 focus:ring-orange-500/5 dark:text-white disabled:opacity-50 placeholder:text-slate-200 transition-all text-center"
-              />
+              <div className="flex gap-3">
+                <div className="flex-1 space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Leitura Atual</label>
+                  <input
+                    type="number"
+                    step="0.001"
+                    value={gasValue}
+                    onChange={(e) => {
+                      setGasValue(e.target.value);
+                      if (gasSaved) setGasSaved(false);
+                    }}
+                    placeholder="0.000"
+                    className="w-full h-20 bg-slate-50 dark:bg-gray-800 border-none rounded-[24px] text-3xl font-black px-4 focus:ring-4 focus:ring-orange-500/5 dark:text-white disabled:opacity-50 placeholder:text-slate-200 transition-all text-center"
+                  />
+                </div>
+                <div className="w-1/3 space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Consumo</label>
+                  <div className="w-full h-20 bg-orange-50 dark:bg-orange-900/10 rounded-[24px] flex items-center justify-center border-2 border-orange-100 dark:border-orange-900/20">
+                    <span className="text-xl font-black text-orange-600 dark:text-orange-400">
+                      {gasValue ? (parseFloat(gasValue) - prevGas).toFixed(3) : '--'}
+                    </span>
+                  </div>
+                </div>
+              </div>
 
               <button
                 onClick={handleSaveGas}
