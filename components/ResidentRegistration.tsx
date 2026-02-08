@@ -1,0 +1,426 @@
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+import { useNavigate } from 'react-router-dom';
+
+interface Apartment {
+    id: string;
+    number: string;
+    block: string;
+}
+
+interface AdditionalResident {
+    name: string;
+    cpf: string;
+    birthDate: string;
+    phone: string;
+}
+
+const ResidentRegistration: React.FC = () => {
+    const navigate = useNavigate();
+    const [step, setStep] = useState(1);
+    const [apartments, setApartments] = useState<Apartment[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState(false);
+
+    // Form State
+    const [selectedApartment, setSelectedApartment] = useState('');
+    const [fullName, setFullName] = useState('');
+    const [cpf, setCpf] = useState('');
+    const [birthDate, setBirthDate] = useState('');
+    const [phone, setPhone] = useState('');
+    const [residentType, setResidentType] = useState('Proprietário');
+    const [garageSpot, setGarageSpot] = useState('');
+    const [isFinancialResponsible, setIsFinancialResponsible] = useState(true);
+    const [financialResponsibleName, setFinancialResponsibleName] = useState('');
+    const [additionalResidents, setAdditionalResidents] = useState<AdditionalResident[]>([]);
+
+    useEffect(() => {
+        fetchApartments();
+    }, []);
+
+    const fetchApartments = async () => {
+        setIsLoading(true);
+        const { data, error } = await supabase
+            .from('apartments')
+            .select('id, number, block')
+            .order('number');
+
+        if (error) {
+            setError('Erro ao carregar unidades.');
+        } else {
+            setApartments(data || []);
+        }
+        setIsLoading(false);
+    };
+
+    const handleAddResident = () => {
+        setAdditionalResidents([...additionalResidents, { name: '', cpf: '', birthDate: '', phone: '' }]);
+    };
+
+    const handleRemoveResident = (index: number) => {
+        setAdditionalResidents(additionalResidents.filter((_, i) => i !== index));
+    };
+
+    const handleUpdateAdditional = (index: number, field: keyof AdditionalResident, value: string) => {
+        const updated = [...additionalResidents];
+        updated[index][field] = value;
+        setAdditionalResidents(updated);
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError(null);
+        setIsSubmitting(true);
+
+        const { error: submitError } = await supabase
+            .from('resident_registrations')
+            .insert([{
+                apartment_id: selectedApartment,
+                full_name: fullName,
+                cpf,
+                birth_date: birthDate,
+                phone,
+                resident_type: residentType,
+                garage_spot: garageSpot,
+                is_financial_responsible: isFinancialResponsible,
+                financial_responsible_name: isFinancialResponsible ? null : financialResponsibleName,
+                additional_residents: additionalResidents,
+                status: 'PENDENTE'
+            }]);
+
+        if (submitError) {
+            setError('Erro ao enviar cadastro: ' + submitError.message);
+        } else {
+            setSuccess(true);
+        }
+        setIsSubmitting(false);
+    };
+
+    if (success) {
+        return (
+            <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-6">
+                <div className="w-full max-w-md bg-white dark:bg-slate-800 rounded-[32px] p-10 text-center shadow-xl border border-slate-100 dark:border-slate-700">
+                    <div className="size-20 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-4xl">check_circle</span>
+                    </div>
+                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Cadastro Enviado!</h2>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed mb-8">
+                        Suas informações foram recebidas com sucesso. A administração do condomínio irá revisar os dados em breve.
+                    </p>
+                    <button
+                        onClick={() => navigate('/login')}
+                        className="w-full h-14 bg-slate-800 dark:bg-slate-700 text-white rounded-2xl font-bold uppercase tracking-widest text-xs hover:bg-slate-700 transition-all"
+                    >
+                        Voltar ao Início
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4 sm:p-6 pb-20">
+            <div className="w-full max-w-lg mx-auto bg-white dark:bg-slate-800 rounded-[40px] shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
+                {/* Header */}
+                <div className="p-8 bg-gradient-to-br from-primary to-primary-dark text-white">
+                    <h1 className="text-2xl font-bold tracking-tight mb-2">Atualização Cadastral</h1>
+                    <p className="text-white/70 text-sm font-medium">Mantenha seus dados atualizados no Luci Berkembrock Residence</p>
+
+                    <div className="flex gap-2 mt-8">
+                        {[1, 2, 3].map((s) => (
+                            <div
+                                key={s}
+                                className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${s <= step ? 'bg-white' : 'bg-white/20'}`}
+                            />
+                        ))}
+                    </div>
+                </div>
+
+                <form onSubmit={handleSubmit} className="p-8 space-y-8">
+                    {step === 1 && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                            <div className="space-y-2">
+                                <h3 className="text-lg font-bold text-slate-800 dark:text-white">Qual a sua unidade?</h3>
+                                <p className="text-slate-400 text-xs font-medium uppercase tracking-wider">Identifique seu apartamento primeiro</p>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Apartamento/Bloco</label>
+                                    <select
+                                        value={selectedApartment}
+                                        onChange={(e) => setSelectedApartment(e.target.value)}
+                                        className="w-full h-14 px-5 rounded-2xl border border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-white font-semibold text-sm focus:ring-4 focus:ring-primary/5 transition-all outline-none"
+                                        required
+                                    >
+                                        <option value="">Selecione a Unidade</option>
+                                        {apartments.map((ap) => (
+                                            <option key={ap.id} value={ap.id}>
+                                                Apartamento {ap.number} - Bloco {ap.block}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {step === 2 && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                            <div className="space-y-2">
+                                <h3 className="text-lg font-bold text-slate-800 dark:text-white">Dados do Morador Principal</h3>
+                                <p className="text-slate-400 text-xs font-medium uppercase tracking-wider">Preencha as informações do titular</p>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nome Completo</label>
+                                    <input
+                                        type="text"
+                                        value={fullName}
+                                        onChange={(e) => setFullName(e.target.value)}
+                                        className="input-field"
+                                        placeholder="Nome como consta no documento"
+                                        required
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">CPF</label>
+                                        <input
+                                            type="text"
+                                            value={cpf}
+                                            onChange={(e) => setCpf(e.target.value)}
+                                            className="input-field"
+                                            placeholder="000.000.000-00"
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Data de Nascimento</label>
+                                        <input
+                                            type="date"
+                                            value={birthDate}
+                                            onChange={(e) => setBirthDate(e.target.value)}
+                                            className="input-field"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">WhatsApp</label>
+                                    <input
+                                        type="tel"
+                                        value={phone}
+                                        onChange={(e) => setPhone(e.target.value)}
+                                        className="input-field"
+                                        placeholder="(00) 00000-0000"
+                                        required
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Vínculo</label>
+                                        <select
+                                            value={residentType}
+                                            onChange={(e) => setResidentType(e.target.value)}
+                                            className="input-field"
+                                        >
+                                            <option value="Proprietário">Proprietário</option>
+                                            <option value="Inquilino">Inquilino</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Vaga de Garagem</label>
+                                        <input
+                                            type="text"
+                                            value={garageSpot}
+                                            onChange={(e) => setGarageSpot(e.target.value)}
+                                            className="input-field"
+                                            placeholder="Nº da Vaga"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="pt-4 border-t border-slate-50 dark:border-slate-700">
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsFinancialResponsible(!isFinancialResponsible)}
+                                            className={`size-6 rounded-lg border-2 transition-all flex items-center justify-center ${isFinancialResponsible
+                                                    ? 'bg-primary border-primary text-white'
+                                                    : 'border-slate-200 dark:border-slate-600'
+                                                }`}
+                                        >
+                                            {isFinancialResponsible && <span className="material-symbols-outlined text-sm font-bold">check</span>}
+                                        </button>
+                                        <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                                            Sou o responsável pelo boleto do condomínio
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {!isFinancialResponsible && (
+                                    <div className="space-y-1.5 animate-in slide-in-from-top-2 duration-300">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nome do Responsável Financeiro</label>
+                                        <input
+                                            type="text"
+                                            value={financialResponsibleName}
+                                            onChange={(e) => setFinancialResponsibleName(e.target.value)}
+                                            className="input-field"
+                                            placeholder="Nome completo para emissão do boleto"
+                                            required
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {step === 3 && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                            <div className="space-y-2">
+                                <h3 className="text-lg font-bold text-slate-800 dark:text-white">Outros Moradores</h3>
+                                <p className="text-slate-400 text-xs font-medium uppercase tracking-wider">Cadastre as demais pessoas na unidade</p>
+                            </div>
+
+                            <div className="space-y-4">
+                                {additionalResidents.map((res, idx) => (
+                                    <div key={idx} className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-3xl border border-slate-100 dark:border-slate-700 relative group">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemoveResident(idx)}
+                                            className="absolute -top-2 -right-2 size-8 bg-white dark:bg-slate-800 rounded-full shadow-lg border border-slate-100 dark:border-slate-700 text-slate-400 hover:text-red-500 transition-colors flex items-center justify-center"
+                                        >
+                                            <span className="material-symbols-outlined text-lg">close</span>
+                                        </button>
+
+                                        <div className="space-y-3">
+                                            <input
+                                                type="text"
+                                                value={res.name}
+                                                onChange={(e) => handleUpdateAdditional(idx, 'name', e.target.value)}
+                                                placeholder="Nome Completo"
+                                                className="w-full bg-transparent border-b border-slate-200 dark:border-slate-700 py-2 text-sm font-semibold outline-none focus:border-primary transition-colors"
+                                                required
+                                            />
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <input
+                                                    type="text"
+                                                    value={res.cpf}
+                                                    onChange={(e) => handleUpdateAdditional(idx, 'cpf', e.target.value)}
+                                                    placeholder="CPF (se houver)"
+                                                    className="w-full bg-transparent border-b border-slate-200 dark:border-slate-700 py-2 text-sm font-semibold outline-none focus:border-primary transition-colors"
+                                                />
+                                                <input
+                                                    type="date"
+                                                    value={res.birthDate}
+                                                    onChange={(e) => handleUpdateAdditional(idx, 'birthDate', e.target.value)}
+                                                    className="w-full bg-transparent border-b border-slate-200 dark:border-slate-700 py-2 text-sm font-semibold outline-none focus:border-primary transition-colors"
+                                                    required
+                                                />
+                                            </div>
+                                            <input
+                                                type="tel"
+                                                value={res.phone}
+                                                onChange={(e) => handleUpdateAdditional(idx, 'phone', e.target.value)}
+                                                placeholder="WhatsApp (se houver)"
+                                                className="w-full bg-transparent border-b border-slate-200 dark:border-slate-700 py-2 text-sm font-semibold outline-none focus:border-primary transition-colors"
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+
+                                <button
+                                    type="button"
+                                    onClick={handleAddResident}
+                                    className="w-full h-14 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl flex items-center justify-center gap-2 text-slate-400 hover:text-primary hover:border-primary/50 transition-all font-bold text-xs uppercase tracking-widest"
+                                >
+                                    <span className="material-symbols-outlined">person_add</span>
+                                    Adicionar outro morador
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {error && (
+                        <div className="p-4 bg-red-50 text-red-500 rounded-2xl text-[10px] font-bold uppercase tracking-widest border border-red-100 animate-in slide-in-from-top-2">
+                            {error}
+                        </div>
+                    )}
+
+                    <div className="flex gap-4 pt-4">
+                        {step > 1 && (
+                            <button
+                                type="button"
+                                onClick={() => setStep(step - 1)}
+                                className="h-16 px-8 rounded-3xl border border-slate-100 dark:border-slate-700 text-slate-400 font-bold uppercase tracking-widest text-[10px] hover:bg-slate-50 dark:hover:bg-slate-900 transition-all"
+                            >
+                                Voltar
+                            </button>
+                        )}
+
+                        {step < 3 ? (
+                            <button
+                                type="button"
+                                onClick={() => selectedApartment && setStep(step + 1)}
+                                disabled={step === 1 && !selectedApartment}
+                                className="flex-1 h-16 bg-primary text-white rounded-3xl font-bold uppercase tracking-[3px] text-xs shadow-xl shadow-primary/20 active:scale-[0.98] transition-all disabled:opacity-50"
+                            >
+                                Próximo Passo
+                            </button>
+                        ) : (
+                            <button
+                                type="submit"
+                                disabled={isSubmitting}
+                                className="flex-1 h-16 bg-emerald-500 text-white rounded-3xl font-bold uppercase tracking-[3px] text-xs shadow-xl shadow-emerald-500/20 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {isSubmitting ? (
+                                    <div className="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                ) : (
+                                    <>
+                                        <span className="material-symbols-outlined text-lg">send</span>
+                                        Finalizar Cadastro
+                                    </>
+                                )}
+                            </button>
+                        )}
+                    </div>
+                </form>
+            </div>
+
+            <style>{`
+        .input-field {
+          width: 100%;
+          height: 3.5rem;
+          padding: 0 1.25rem;
+          border-radius: 1rem;
+          border-width: 1px;
+          border-color: #f1f5f9;
+          background-color: #f8fafc;
+          font-weight: 600;
+          font-size: 0.875rem;
+          outline: none;
+          transition: all 0.2s;
+        }
+        .dark .input-field {
+          background-color: #0f172a;
+          border-color: #334155;
+          color: white;
+        }
+        .input-field:focus {
+          ring: 4px;
+          --tw-ring-color: rgba(128, 46, 83, 0.05);
+        }
+      `}</style>
+        </div>
+    );
+};
+
+export default ResidentRegistration;

@@ -12,6 +12,7 @@ import Settings from './components/Settings';
 import Navigation from './components/Navigation';
 import ImagePreview from './components/ImagePreview';
 import Login from './components/Login';
+import ResidentRegistration from './components/ResidentRegistration';
 import { supabase } from './lib/supabase';
 
 const App: React.FC = () => {
@@ -21,6 +22,8 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const location = useLocation();
   const navigate = useNavigate();
+
+  const publicRoutes = ['/login', '/cadastro'];
 
   useEffect(() => {
     // Check initial session
@@ -37,12 +40,14 @@ const App: React.FC = () => {
           navigate('/dashboard');
         }
       } else {
-        navigate('/login');
+        if (!publicRoutes.includes(location.pathname)) {
+          navigate('/login');
+        }
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, location.pathname]);
 
   useEffect(() => {
     if (darkMode) {
@@ -61,7 +66,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (!isLoading) {
-      if (!isAuthenticated && location.pathname !== '/login') {
+      if (!isAuthenticated && !publicRoutes.includes(location.pathname)) {
         navigate('/login');
       } else if (isAuthenticated && location.pathname === '/login') {
         navigate('/dashboard');
@@ -83,6 +88,7 @@ const App: React.FC = () => {
         <div className="mx-auto w-full max-w-[500px] min-h-full flex flex-col bg-slate-50 dark:bg-background-dark shadow-2xl shadow-black/5 min-[501px]:border-x dark:border-gray-800">
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/cadastro" element={<ResidentRegistration />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/readings" element={<ApartmentList />} />
             <Route path="/readings/:id" element={<ReadingForm />} />
