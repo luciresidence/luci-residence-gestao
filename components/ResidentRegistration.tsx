@@ -21,7 +21,7 @@ const ResidentRegistration: React.FC = () => {
     const [apartments, setApartments] = useState<Apartment[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [errors, setErrors] = useState<{ [key: string]: string }>({});
     const [success, setSuccess] = useState(false);
 
     // Form State
@@ -48,7 +48,7 @@ const ResidentRegistration: React.FC = () => {
             .order('number');
 
         if (error) {
-            setError('Erro ao carregar unidades.');
+            setErrors(prev => ({ ...prev, general: 'Erro ao carregar unidades.' }));
         } else {
             setApartments(data || []);
         }
@@ -65,8 +65,22 @@ const ResidentRegistration: React.FC = () => {
 
     const handleUpdateAdditional = (index: number, field: keyof AdditionalResident, value: string) => {
         const updated = [...additionalResidents];
-        updated[index][field] = value;
+        let finalValue = value;
+
+        if (field === 'cpf') finalValue = formatCPF(value);
+        if (field === 'phone') finalValue = formatPhone(value);
+
+        updated[index][field] = finalValue;
         setAdditionalResidents(updated);
+
+        // Clear error if field is filled
+        if (finalValue.trim()) {
+            setErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors[`additional_${index}_${field}`];
+                return newErrors;
+            });
+        }
     };
 
     // Validation Helpers
@@ -118,41 +132,134 @@ const ResidentRegistration: React.FC = () => {
             .replace(/(-\d{4})\d+?$/, '$1');
     };
 
+    // Real-time Handlers
+    const handleCpfChange = (value: string) => {
+        const formatted = formatCPF(value);
+        setCpf(formatted);
+
+        if (formatted.length === 14) {
+            if (!validateCPF(formatted)) {
+                setErrors(prev => ({ ...prev, cpf: 'CPF inválido. Verifique os números.' }));
+            } else {
+                setErrors(prev => {
+                    const newErrors = { ...prev };
+                    delete newErrors.cpf;
+                    return newErrors;
+                });
+            }
+        } else {
+            setErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors.cpf;
+                return newErrors;
+            });
+        }
+    };
+
+    const handlePhoneChange = (value: string) => {
+        const formatted = formatPhone(value);
+        setPhone(formatted);
+
+        const cleanLen = formatted.replace(/\D/g, '').length;
+        if (cleanLen >= 10 && cleanLen <= 11) {
+            setErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors.phone;
+                return newErrors;
+            });
+        }
+    };
+
+    const handleGarageChange = (value: string) => {
+        setGarageSpot(value);
+        if (value.trim()) {
+            setErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors.garageSpot;
+                return newErrors;
+            });
+        }
+    };
+
+    const handleBirthDateChange = (value: string) => {
+        setBirthDate(value);
+        if (value) {
+            setErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors.birthDate;
+                return newErrors;
+            });
+        }
+    };
+
+    const validateStepData = (currentStep: number) => {
+        const newErrors: { [key: string]: string } = {};
+        let isValid = true;
+
+        if (currentStep === 1) {
+            if (!selectedApartment) {
+                newErrors.selectedApartment = 'Selecione uma unidade.';
+                isValid = false;
+            }
+        }
+
+        if (currentStep === 2) {
+            if (!fullName.trim()) {
+                newErrors.fullName = 'Nome é obrigatório.';
+                isValid = false;
+            }
+            if (!validateCPF(cpf)) {
+                newErrors.cpf = 'CPF inválido.';
+                isValid = false;
+            }
+            if (!birthDate) {
+                newErrors.birthDate = 'Data obrigatória.';
+                isValid = false;
+            }
+            if (!validatePhone(phone)) {
+                newErrors.phone = 'Telefone inválido.';
+                isValid = false;
+            }
+            if (!garageSpot.trim()) {
+                newErrors.garageSpot = 'Vaga é obrigatória.';
+                isValid = false;
+            }
+            if (!isFinancialResponsible && !financialResponsibleName.trim()) {
+                newErrors.financialResponsibleName = 'Informe o responsável.';
+                isValid = false;
+            }
+        }
+
+        if (currentStep === 3) {
+            additionalResidents.forEach((res, idx) => {
+                if (!res.name.trim()) {
+                    newErrors[`additional_${idx}_name`] = 'Nome obrigatório';
+                    isValid = false;
+                }
+                if (!res.birthDate) {
+                    newErrors[`additional_${idx}_birthDate`] = 'Data obrigatória';
+                    isValid = false;
+                }
+            });
+        }
+
+        setErrors(prev => ({ ...prev, ...newErrors }));
+        return isValid;
+    };
+
+    const handleNextStep = () => {
+        if (validateStepData(step)) {
+            setStep(step + 1);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError(null);
+        setErrors({});
+
+        if (!validateStepData(step)) return;
+
         setIsSubmitting(true);
-
-        // Validations
-        if (!selectedApartment) {
-            setError('Por favor, selecione uma unidade.');
-            setIsSubmitting(false);
-            return;
-        }
-
-        if (!validateCPF(cpf)) {
-            setError('CPF inválido. Verifique os 11 números.');
-            setIsSubmitting(false);
-            return;
-        }
-
-        if (!birthDate) {
-            setError('Data de nascimento é obrigatória.');
-            setIsSubmitting(false);
-            return;
-        }
-
-        if (!validatePhone(phone)) {
-            setError('Telefone inválido. Digite o número completo com DDD.');
-            setIsSubmitting(false);
-            return;
-        }
-
-        if (!garageSpot.trim()) {
-            setError('Informe a vaga de garagem. Se não possuir, digite "Sem vaga".');
-            setIsSubmitting(false);
-            return;
-        }
 
         const { error: submitError } = await supabase
             .from('resident_registrations')
@@ -171,7 +278,7 @@ const ResidentRegistration: React.FC = () => {
             }]);
 
         if (submitError) {
-            setError('Erro ao enviar cadastro: ' + submitError.message);
+            setErrors(prev => ({ ...prev, general: 'Erro ao enviar: ' + submitError.message }));
         } else {
             setSuccess(true);
         }
@@ -231,9 +338,15 @@ const ResidentRegistration: React.FC = () => {
                                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Apartamento/Bloco</label>
                                     <select
                                         value={selectedApartment}
-                                        onChange={(e) => setSelectedApartment(e.target.value)}
-                                        className="w-full h-14 px-5 rounded-2xl border border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-white font-semibold text-sm focus:ring-4 focus:ring-primary/5 transition-all outline-none"
-                                        required
+                                        onChange={(e) => {
+                                            setSelectedApartment(e.target.value);
+                                            setErrors(prev => {
+                                                const newErrors = { ...prev };
+                                                delete newErrors.selectedApartment;
+                                                return newErrors;
+                                            });
+                                        }}
+                                        className={`w-full h-14 px-5 rounded-2xl border ${errors.selectedApartment ? 'border-red-400 bg-red-50' : 'border-slate-100 bg-slate-50'} dark:bg-slate-900 dark:border-slate-700 text-slate-700 dark:text-white font-semibold text-sm focus:ring-4 focus:ring-primary/5 transition-all outline-none`}
                                     >
                                         <option value="">Selecione a Unidade</option>
                                         {apartments.map((ap) => (
@@ -242,6 +355,7 @@ const ResidentRegistration: React.FC = () => {
                                             </option>
                                         ))}
                                     </select>
+                                    {errors.selectedApartment && <span className="text-red-500 text-[10px] font-bold uppercase ml-2">{errors.selectedApartment}</span>}
                                 </div>
                             </div>
                         </div>
@@ -260,11 +374,20 @@ const ResidentRegistration: React.FC = () => {
                                     <input
                                         type="text"
                                         value={fullName}
-                                        onChange={(e) => setFullName(e.target.value)}
-                                        className="input-field"
+                                        onChange={(e) => {
+                                            setFullName(e.target.value);
+                                            if (e.target.value.trim()) {
+                                                setErrors(prev => {
+                                                    const newErrors = { ...prev };
+                                                    delete newErrors.fullName;
+                                                    return newErrors;
+                                                });
+                                            }
+                                        }}
+                                        className={`input-field ${errors.fullName ? '!border-red-400 !bg-red-50' : ''}`}
                                         placeholder="Nome como consta no documento"
-                                        required
                                     />
+                                    {errors.fullName && <span className="text-red-500 text-[10px] font-bold uppercase ml-2">{errors.fullName}</span>}
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
@@ -273,22 +396,22 @@ const ResidentRegistration: React.FC = () => {
                                         <input
                                             type="text"
                                             value={cpf}
-                                            onChange={(e) => setCpf(formatCPF(e.target.value))}
+                                            onChange={(e) => handleCpfChange(e.target.value)}
                                             maxLength={14}
-                                            className="input-field"
+                                            className={`input-field ${errors.cpf ? '!border-red-400 !bg-red-50' : ''}`}
                                             placeholder="000.000.000-00"
-                                            required
                                         />
+                                        {errors.cpf && <span className="text-red-500 text-[10px] font-bold uppercase ml-2">{errors.cpf}</span>}
                                     </div>
                                     <div className="space-y-1.5">
                                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Data de Nascimento</label>
                                         <input
                                             type="date"
                                             value={birthDate}
-                                            onChange={(e) => setBirthDate(e.target.value)}
-                                            className="input-field"
-                                            required
+                                            onChange={(e) => handleBirthDateChange(e.target.value)}
+                                            className={`input-field ${errors.birthDate ? '!border-red-400 !bg-red-50' : ''}`}
                                         />
+                                        {errors.birthDate && <span className="text-red-500 text-[10px] font-bold uppercase ml-2">{errors.birthDate}</span>}
                                     </div>
                                 </div>
 
@@ -297,12 +420,12 @@ const ResidentRegistration: React.FC = () => {
                                     <input
                                         type="tel"
                                         value={phone}
-                                        onChange={(e) => setPhone(formatPhone(e.target.value))}
+                                        onChange={(e) => handlePhoneChange(e.target.value)}
                                         maxLength={15}
-                                        className="input-field"
+                                        className={`input-field ${errors.phone ? '!border-red-400 !bg-red-50' : ''}`}
                                         placeholder="(00) 00000-0000"
-                                        required
                                     />
+                                    {errors.phone && <span className="text-red-500 text-[10px] font-bold uppercase ml-2">{errors.phone}</span>}
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
@@ -322,11 +445,11 @@ const ResidentRegistration: React.FC = () => {
                                         <input
                                             type="text"
                                             value={garageSpot}
-                                            onChange={(e) => setGarageSpot(e.target.value)}
-                                            className="input-field"
+                                            onChange={(e) => handleGarageChange(e.target.value)}
+                                            className={`input-field ${errors.garageSpot ? '!border-red-400 !bg-red-50' : ''}`}
                                             placeholder="Nº da Vaga"
-                                            required
                                         />
+                                        {errors.garageSpot && <span className="text-red-500 text-[10px] font-bold uppercase ml-2">{errors.garageSpot}</span>}
                                     </div>
                                 </div>
 
@@ -354,11 +477,20 @@ const ResidentRegistration: React.FC = () => {
                                         <input
                                             type="text"
                                             value={financialResponsibleName}
-                                            onChange={(e) => setFinancialResponsibleName(e.target.value)}
-                                            className="input-field"
+                                            onChange={(e) => {
+                                                setFinancialResponsibleName(e.target.value);
+                                                if (e.target.value.trim()) {
+                                                    setErrors(prev => {
+                                                        const newErrors = { ...prev };
+                                                        delete newErrors.financialResponsibleName;
+                                                        return newErrors;
+                                                    });
+                                                }
+                                            }}
+                                            className={`input-field ${errors.financialResponsibleName ? '!border-red-400 !bg-red-50' : ''}`}
                                             placeholder="Nome completo para emissão do boleto"
-                                            required
                                         />
+                                        {errors.financialResponsibleName && <span className="text-red-500 text-[10px] font-bold uppercase ml-2">{errors.financialResponsibleName}</span>}
                                     </div>
                                 )}
                             </div>
@@ -384,35 +516,39 @@ const ResidentRegistration: React.FC = () => {
                                         </button>
 
                                         <div className="space-y-3">
-                                            <input
-                                                type="text"
-                                                value={res.name}
-                                                onChange={(e) => handleUpdateAdditional(idx, 'name', e.target.value)}
-                                                placeholder="Nome Completo"
-                                                className="w-full bg-transparent border-b border-slate-200 dark:border-slate-700 py-2 text-sm font-semibold outline-none focus:border-primary transition-colors"
-                                                required
-                                            />
+                                            <div className="space-y-1">
+                                                <input
+                                                    type="text"
+                                                    value={res.name}
+                                                    onChange={(e) => handleUpdateAdditional(idx, 'name', e.target.value)}
+                                                    placeholder="Nome Completo"
+                                                    className={`w-full bg-transparent border-b ${errors[`additional_${idx}_name`] ? 'border-red-400' : 'border-slate-200 dark:border-slate-700'} py-2 text-sm font-semibold outline-none focus:border-primary transition-colors`}
+                                                />
+                                                {errors[`additional_${idx}_name`] && <span className="text-red-500 text-[10px] font-bold uppercase">{errors[`additional_${idx}_name`]}</span>}
+                                            </div>
                                             <div className="grid grid-cols-2 gap-3">
                                                 <input
                                                     type="text"
                                                     value={res.cpf}
                                                     onChange={(e) => handleUpdateAdditional(idx, 'cpf', e.target.value)}
-                                                    placeholder="CPF (se houver)"
+                                                    placeholder="CPF (opcional)"
                                                     className="w-full bg-transparent border-b border-slate-200 dark:border-slate-700 py-2 text-sm font-semibold outline-none focus:border-primary transition-colors"
                                                 />
-                                                <input
-                                                    type="date"
-                                                    value={res.birthDate}
-                                                    onChange={(e) => handleUpdateAdditional(idx, 'birthDate', e.target.value)}
-                                                    className="w-full bg-transparent border-b border-slate-200 dark:border-slate-700 py-2 text-sm font-semibold outline-none focus:border-primary transition-colors"
-                                                    required
-                                                />
+                                                <div className="space-y-1">
+                                                    <input
+                                                        type="date"
+                                                        value={res.birthDate}
+                                                        onChange={(e) => handleUpdateAdditional(idx, 'birthDate', e.target.value)}
+                                                        className={`w-full bg-transparent border-b ${errors[`additional_${idx}_birthDate`] ? 'border-red-400' : 'border-slate-200 dark:border-slate-700'} py-2 text-sm font-semibold outline-none focus:border-primary transition-colors`}
+                                                    />
+                                                    {errors[`additional_${idx}_birthDate`] && <span className="text-red-500 text-[10px] font-bold uppercase">{errors[`additional_${idx}_birthDate`]}</span>}
+                                                </div>
                                             </div>
                                             <input
                                                 type="tel"
                                                 value={res.phone}
                                                 onChange={(e) => handleUpdateAdditional(idx, 'phone', e.target.value)}
-                                                placeholder="WhatsApp (se houver)"
+                                                placeholder="WhatsApp (opcional)"
                                                 className="w-full bg-transparent border-b border-slate-200 dark:border-slate-700 py-2 text-sm font-semibold outline-none focus:border-primary transition-colors"
                                             />
                                         </div>
@@ -431,9 +567,9 @@ const ResidentRegistration: React.FC = () => {
                         </div>
                     )}
 
-                    {error && (
+                    {errors.general && (
                         <div className="p-4 bg-red-50 text-red-500 rounded-2xl text-[10px] font-bold uppercase tracking-widest border border-red-100 animate-in slide-in-from-top-2">
-                            {error}
+                            {errors.general}
                         </div>
                     )}
 
@@ -451,8 +587,7 @@ const ResidentRegistration: React.FC = () => {
                         {step < 3 ? (
                             <button
                                 type="button"
-                                onClick={() => selectedApartment && setStep(step + 1)}
-                                disabled={step === 1 && !selectedApartment}
+                                onClick={handleNextStep}
                                 className="flex-1 h-16 bg-primary text-white rounded-3xl font-bold uppercase tracking-[3px] text-xs shadow-xl shadow-primary/20 active:scale-[0.98] transition-all disabled:opacity-50"
                             >
                                 Próximo Passo
