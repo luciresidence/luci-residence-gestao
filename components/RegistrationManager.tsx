@@ -141,6 +141,25 @@ const RegistrationManager: React.FC = () => {
         setIsEditing(false);
     };
 
+    const handleDeleteRegistration = async (id: string) => {
+        if (!confirm('Tem certeza que deseja excluir este formulário? A unidade não será apagada, apenas o cadastro do morador.')) {
+            return;
+        }
+
+        const { error } = await supabase
+            .from('resident_registrations')
+            .delete()
+            .eq('id', id);
+
+        if (!error) {
+            fetchRegistrations();
+            setSelectedReg(null);
+            setIsEditing(false);
+        } else {
+            alert('Erro ao excluir o formulário. Tente novamente.');
+        }
+    };
+
     const formatCPF = (value: string) => {
         const digits = value.replace(/\D/g, '').slice(0, 11);
         return digits
@@ -162,7 +181,7 @@ const RegistrationManager: React.FC = () => {
             {/* Header */}
             <div className="p-6 bg-white dark:bg-surface-dark border-b dark:border-gray-800 flex justify-between items-center">
                 <div>
-                    <h1 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Solicitações</h1>
+                    <h1 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Formulário</h1>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
                         {registrations.filter(r => r.status === 'PENDENTE').length} Pendentes para revisão
                     </p>
@@ -224,13 +243,22 @@ const RegistrationManager: React.FC = () => {
                             </div>
                             <div className="flex gap-2">
                                 {!isEditing && (
-                                    <button
-                                        onClick={() => setIsEditing(true)}
-                                        className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all"
-                                        title="Editar"
-                                    >
-                                        <span className="material-symbols-outlined">edit</span>
-                                    </button>
+                                    <>
+                                        <button
+                                            onClick={() => setIsEditing(true)}
+                                            className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all"
+                                            title="Editar"
+                                        >
+                                            <span className="material-symbols-outlined">edit</span>
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeleteRegistration(selectedReg.id)}
+                                            className="size-10 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white transition-all"
+                                            title="Excluir Formulário"
+                                        >
+                                            <span className="material-symbols-outlined">delete</span>
+                                        </button>
+                                    </>
                                 )}
                                 <button onClick={handleCloseModal} className="size-10 rounded-full bg-slate-50 dark:bg-slate-900 flex items-center justify-center text-slate-400">
                                     <span className="material-symbols-outlined">close</span>
