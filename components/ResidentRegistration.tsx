@@ -69,19 +69,99 @@ const ResidentRegistration: React.FC = () => {
         setAdditionalResidents(updated);
     };
 
+    // Validation Helpers
+    const validateCPF = (cpf: string) => {
+        const cleanCPF = cpf.replace(/[^\d]/g, '');
+        if (cleanCPF.length !== 11) return false;
+
+        // Basic invalid patterns
+        if (/^(\d)\1{10}$/.test(cleanCPF)) return false;
+
+        // Checksum validation
+        let sum = 0;
+        let remainder;
+        for (let i = 1; i <= 9; i++) sum = sum + parseInt(cleanCPF.substring(i - 1, i)) * (11 - i);
+        remainder = (sum * 10) % 11;
+        if ((remainder === 10) || (remainder === 11)) remainder = 0;
+        if (remainder !== parseInt(cleanCPF.substring(9, 10))) return false;
+
+        sum = 0;
+        for (let i = 1; i <= 10; i++) sum = sum + parseInt(cleanCPF.substring(i - 1, i)) * (12 - i);
+        remainder = (sum * 10) % 11;
+        if ((remainder === 10) || (remainder === 11)) remainder = 0;
+        if (remainder !== parseInt(cleanCPF.substring(10, 11))) return false;
+
+        return true;
+    };
+
+    const validatePhone = (phone: string) => {
+        const cleanPhone = phone.replace(/[^\d]/g, '');
+        // BR Phone: 10 or 11 digits (DD + Number)
+        return cleanPhone.length >= 10 && cleanPhone.length <= 11;
+    };
+
+    // Input Masks
+    const formatCPF = (value: string) => {
+        return value
+            .replace(/\D/g, '')
+            .replace(/(\d{3})(\d)/, '$1.$2')
+            .replace(/(\d{3})(\d)/, '$1.$2')
+            .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+            .replace(/(-\d{2})\d+?$/, '$1');
+    };
+
+    const formatPhone = (value: string) => {
+        return value
+            .replace(/\D/g, '')
+            .replace(/(\d{2})(\d)/, '($1) $2')
+            .replace(/(\d{5})(\d)/, '$1-$2')
+            .replace(/(-\d{4})\d+?$/, '$1');
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
         setIsSubmitting(true);
+
+        // Validations
+        if (!selectedApartment) {
+            setError('Por favor, selecione uma unidade.');
+            setIsSubmitting(false);
+            return;
+        }
+
+        if (!validateCPF(cpf)) {
+            setError('CPF inválido. Verifique os 11 números.');
+            setIsSubmitting(false);
+            return;
+        }
+
+        if (!birthDate) {
+            setError('Data de nascimento é obrigatória.');
+            setIsSubmitting(false);
+            return;
+        }
+
+        if (!validatePhone(phone)) {
+            setError('Telefone inválido. Digite o número completo com DDD.');
+            setIsSubmitting(false);
+            return;
+        }
+
+        if (!garageSpot.trim()) {
+            setError('Informe a vaga de garagem. Se não possuir, digite "Sem vaga".');
+            setIsSubmitting(false);
+            return;
+        }
 
         const { error: submitError } = await supabase
             .from('resident_registrations')
             .insert([{
                 apartment_id: selectedApartment,
                 full_name: fullName,
-                cpf,
+                cpf: cpf.replace(/[^\d]/g, ''),
                 birth_date: birthDate,
-                phone,
+                phone: phone.replace(/[^\d]/g, ''),
                 resident_type: residentType,
                 garage_spot: garageSpot,
                 is_financial_responsible: isFinancialResponsible,
@@ -193,7 +273,8 @@ const ResidentRegistration: React.FC = () => {
                                         <input
                                             type="text"
                                             value={cpf}
-                                            onChange={(e) => setCpf(e.target.value)}
+                                            onChange={(e) => setCpf(formatCPF(e.target.value))}
+                                            maxLength={14}
                                             className="input-field"
                                             placeholder="000.000.000-00"
                                             required
@@ -216,7 +297,8 @@ const ResidentRegistration: React.FC = () => {
                                     <input
                                         type="tel"
                                         value={phone}
-                                        onChange={(e) => setPhone(e.target.value)}
+                                        onChange={(e) => setPhone(formatPhone(e.target.value))}
+                                        maxLength={15}
                                         className="input-field"
                                         placeholder="(00) 00000-0000"
                                         required
@@ -254,8 +336,8 @@ const ResidentRegistration: React.FC = () => {
                                             type="button"
                                             onClick={() => setIsFinancialResponsible(!isFinancialResponsible)}
                                             className={`size-6 rounded-lg border-2 transition-all flex items-center justify-center ${isFinancialResponsible
-                                                    ? 'bg-primary border-primary text-white'
-                                                    : 'border-slate-200 dark:border-slate-600'
+                                                ? 'bg-primary border-primary text-white'
+                                                : 'border-slate-200 dark:border-slate-600'
                                                 }`}
                                         >
                                             {isFinancialResponsible && <span className="material-symbols-outlined text-sm font-bold">check</span>}
