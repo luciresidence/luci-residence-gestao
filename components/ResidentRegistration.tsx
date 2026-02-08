@@ -253,9 +253,7 @@ const ResidentRegistration: React.FC = () => {
         }
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-
+    const handleSubmit = async () => {
         // Only allow submission on step 3
         if (step !== 3) {
             return;
@@ -331,7 +329,7 @@ const ResidentRegistration: React.FC = () => {
                     </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-8 space-y-8">
+                <form className="p-8 space-y-8">
                     {step === 1 && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
                             <div className="space-y-2">
@@ -600,7 +598,8 @@ const ResidentRegistration: React.FC = () => {
                             </button>
                         ) : (
                             <button
-                                type="submit"
+                                type="button"
+                                onClick={() => handleSubmit()}
                                 disabled={isSubmitting}
                                 className="flex-1 h-16 bg-emerald-500 text-white rounded-3xl font-bold uppercase tracking-[3px] text-xs shadow-xl shadow-emerald-500/20 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                             >
