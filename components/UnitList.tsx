@@ -37,21 +37,29 @@ const UnitList: React.FC = () => {
           avatarUrl: apt.avatar_url
         }));
 
-        // Ordenação customizada: COND primeiro, depois Bloco A, depois Bloco B
+        // Ordenação customizada: Unidades com texto primeiro, depois Bloco A, depois Bloco B
         const sortedUnits = mappedUnits.sort((a, b) => {
-          // COND sempre primeiro
-          if (a.number === 'COND') return -1;
-          if (b.number === 'COND') return 1;
+          const numA = parseInt(a.number);
+          const numB = parseInt(b.number);
+          const isNumericA = !isNaN(numA);
+          const isNumericB = !isNaN(numB);
 
-          // Separar por bloco
+          // Unidades com texto (não numéricos) sempre primeiro
+          if (!isNumericA && isNumericB) return -1;
+          if (isNumericA && !isNumericB) return 1;
+
+          // Se ambos são texto, ordenar alfabeticamente
+          if (!isNumericA && !isNumericB) {
+            return a.number.localeCompare(b.number);
+          }
+
+          // Se ambos são numéricos, separar por bloco
           if (a.block !== b.block) {
             // Bloco A antes do Bloco B
             return a.block.localeCompare(b.block);
           }
 
           // Dentro do mesmo bloco, ordenar por número
-          const numA = parseInt(a.number) || 0;
-          const numB = parseInt(b.number) || 0;
           return numA - numB;
         });
 
