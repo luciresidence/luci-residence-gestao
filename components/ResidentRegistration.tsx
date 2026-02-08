@@ -255,6 +255,12 @@ const ResidentRegistration: React.FC = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Only allow submission on step 3
+        if (step !== 3) {
+            return;
+        }
+
         setErrors({});
 
         if (!validateStepData(step)) return;
