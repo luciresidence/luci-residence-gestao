@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import Dashboard from './components/Dashboard';
 import ApartmentList from './components/ApartmentList';
 import ReadingForm from './components/ReadingForm';
@@ -41,7 +41,11 @@ const App: React.FC = () => {
           navigate('/dashboard');
         }
       } else {
-        if (!publicRoutes.includes(location.pathname)) {
+        const path = location.pathname.endsWith('/') && location.pathname.length > 1
+          ? location.pathname.slice(0, -1)
+          : location.pathname;
+
+        if (!publicRoutes.includes(path)) {
           navigate('/login');
         }
       }
@@ -67,9 +71,13 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (!isLoading) {
-      if (!isAuthenticated && !publicRoutes.includes(location.pathname)) {
+      const path = location.pathname.endsWith('/') && location.pathname.length > 1
+        ? location.pathname.slice(0, -1)
+        : location.pathname;
+
+      if (!isAuthenticated && !publicRoutes.includes(path)) {
         navigate('/login');
-      } else if (isAuthenticated && location.pathname === '/login') {
+      } else if (isAuthenticated && path === '/login') {
         navigate('/dashboard');
       }
     }
@@ -88,6 +96,7 @@ const App: React.FC = () => {
       <div className="flex-1 overflow-y-auto relative no-scrollbar">
         <div className="mx-auto w-full max-w-[500px] min-h-full flex flex-col bg-slate-50 dark:bg-background-dark shadow-2xl shadow-black/5 min-[501px]:border-x dark:border-gray-800">
           <Routes>
+            <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<Login />} />
             <Route path="/cadastro" element={<ResidentRegistration />} />
             <Route path="/dashboard" element={<Dashboard />} />
