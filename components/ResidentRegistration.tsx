@@ -315,11 +315,11 @@ const ResidentRegistration: React.FC = () => {
         <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4 sm:p-6 pb-20">
             <div className="w-full max-w-lg mx-auto bg-white dark:bg-slate-800 rounded-[40px] shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
                 {/* Header */}
-                <div className="p-8 bg-gradient-to-br from-primary to-primary-dark text-white">
-                    <h1 className="text-2xl font-bold tracking-tight mb-2">Atualização Cadastral</h1>
-                    <p className="text-white/70 text-sm font-medium">Mantenha seus dados atualizados no Luci Berkembrock Residence</p>
+                <div className="p-6 sm:p-8 bg-gradient-to-br from-primary to-primary-dark text-white">
+                    <h1 className="text-xl sm:text-2xl font-bold tracking-tight mb-2">Atualização Cadastral</h1>
+                    <p className="text-white/70 text-xs sm:text-sm font-medium">Mantenha seus dados atualizados no Luci Berkembrock Residence</p>
 
-                    <div className="flex gap-2 mt-8">
+                    <div className="flex gap-2 mt-6 sm:mt-8">
                         {[1, 2, 3].map((s) => (
                             <div
                                 key={s}
@@ -394,7 +394,7 @@ const ResidentRegistration: React.FC = () => {
                                     {errors.fullName && <span className="text-red-500 text-[10px] font-bold uppercase ml-2">{errors.fullName}</span>}
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-1.5">
                                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">CPF</label>
                                         <input
@@ -432,7 +432,7 @@ const ResidentRegistration: React.FC = () => {
                                     {errors.phone && <span className="text-red-500 text-[10px] font-bold uppercase ml-2">{errors.phone}</span>}
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-1.5">
                                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Vínculo</label>
                                         <select
@@ -530,7 +530,7 @@ const ResidentRegistration: React.FC = () => {
                                                 />
                                                 {errors[`additional_${idx}_name`] && <span className="text-red-500 text-[10px] font-bold uppercase">{errors[`additional_${idx}_name`]}</span>}
                                             </div>
-                                            <div className="grid grid-cols-2 gap-3">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                 <input
                                                     type="text"
                                                     value={res.cpf}
@@ -627,9 +627,10 @@ const ResidentRegistration: React.FC = () => {
           border-color: #f1f5f9;
           background-color: #f8fafc;
           font-weight: 600;
-          font-size: 0.875rem;
+          font-size: 16px;
           outline: none;
           transition: all 0.2s;
+          box-sizing: border-box;
         }
         .dark .input-field {
           background-color: #0f172a;
@@ -639,6 +640,13 @@ const ResidentRegistration: React.FC = () => {
         .input-field:focus {
           ring: 4px;
           --tw-ring-color: rgba(128, 46, 83, 0.05);
+        }
+        @media (max-width: 640px) {
+          .input-field {
+            height: 3.2rem;
+            padding: 0 1rem;
+            font-size: 14px;
+          }
         }
       `}</style>
         </div>
