@@ -339,7 +339,7 @@ const ResidentRegistration: React.FC = () => {
 
                             <div className="grid grid-cols-1 gap-4">
                                 <div className="space-y-1.5">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Apartamento/Bloco</label>
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Apto./Bloco</label>
                                     <select
                                         value={selectedApartment}
                                         onChange={(e) => {
@@ -355,7 +355,7 @@ const ResidentRegistration: React.FC = () => {
                                         <option value="">Selecione a Unidade</option>
                                         {apartments.map((ap) => (
                                             <option key={ap.id} value={ap.id}>
-                                                Apartamento {ap.number} - Bloco {ap.block}
+                                                Apto. {ap.number} - Bloco {ap.block}
                                             </option>
                                         ))}
                                     </select>

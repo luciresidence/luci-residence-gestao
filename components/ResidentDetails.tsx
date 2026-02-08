@@ -100,7 +100,7 @@ const ResidentDetails: React.FC = () => {
           </div>
           <div className="p-5">
             <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Localização</p>
-            <p className="font-bold text-slate-800 dark:text-slate-200">Apartamento {apartment.number}, Bloco {apartment.block}</p>
+            <p className="font-bold text-slate-800 dark:text-slate-200">Apto. {apartment.number}, Bloco {apartment.block}</p>
           </div>
           <div className="p-5">
             <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Tipo</p>
