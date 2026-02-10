@@ -92,9 +92,9 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="h-full w-full bg-background-light dark:bg-background-dark overflow-hidden flex flex-col">
-      <div className="flex-1 overflow-y-auto relative no-scrollbar">
-        <div className="mx-auto w-full max-w-[500px] min-h-full flex flex-col bg-slate-50 dark:bg-background-dark shadow-2xl shadow-black/5 min-[501px]:border-x dark:border-gray-800">
+    <div className="h-[100dvh] w-full bg-background-light dark:bg-background-dark overflow-hidden flex flex-col">
+      <div className="flex-1 overflow-y-auto relative no-scrollbar flex flex-col">
+        <div className="mx-auto w-full max-w-[500px] flex-1 flex flex-col bg-slate-50 dark:bg-background-dark shadow-2xl shadow-black/5 min-[501px]:border-x dark:border-gray-800">
           <Routes>
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<Login />} />

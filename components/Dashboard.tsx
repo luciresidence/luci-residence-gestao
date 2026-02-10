@@ -36,7 +36,7 @@ const Dashboard: React.FC = () => {
         .select('date')
         .order('date', { ascending: false })
         .limit(1);
-      
+
       if (data && data.length > 0) {
         const lastDate = new Date(data[0].date);
         setCurrentDate(new Date(lastDate.getFullYear(), lastDate.getMonth(), 1));
@@ -151,7 +151,7 @@ const Dashboard: React.FC = () => {
   });
 
   return (
-    <div className="scroll-container bg-background-light dark:bg-background-dark">
+    <div className="scroll-container flex-1 bg-background-light dark:bg-background-dark">
       <div className="pt-safe pb-32">
         <header className="px-6 py-6 bg-white dark:bg-surface-dark border-b dark:border-gray-800 flex flex-col items-center shadow-sm">
           <Logo />
@@ -249,7 +249,7 @@ const Dashboard: React.FC = () => {
           {/* Rankings Section */}
           <div className="space-y-4 pt-2">
             <h3 className="text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest pl-2">Ranking de Consumo</h3>
-            
+
             <div className="grid grid-cols-1 gap-4">
               {/* Water Ranking */}
               <div className="bg-white dark:bg-surface-dark p-6 rounded-[2.5rem] shadow-sm border border-slate-50 dark:border-gray-800">

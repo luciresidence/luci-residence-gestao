@@ -180,7 +180,7 @@ const ReadingForm: React.FC = () => {
   };
 
   return (
-    <div className="pb-32 pt-safe min-h-screen bg-slate-50 dark:bg-background-dark transition-colors duration-200">
+    <div className="pb-32 pt-safe flex-1 flex flex-col bg-slate-50 dark:bg-background-dark transition-colors duration-200">
       <header className="sticky top-0 z-30 flex items-center bg-white dark:bg-surface-dark p-4 border-b dark:border-gray-800 shadow-sm">
         <button onClick={() => navigate(-1)} className="size-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-gray-800 text-primary transition-colors">
           <span className="material-symbols-outlined font-bold">arrow_back_ios</span>

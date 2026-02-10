@@ -74,7 +74,7 @@ const UnitList: React.FC = () => {
   );
 
   return (
-    <div className="pb-32 pt-safe min-h-screen bg-slate-50 dark:bg-background-dark">
+    <div className="pb-32 pt-safe flex-1 flex flex-col bg-slate-50 dark:bg-background-dark">
       <header className="px-5 py-6 bg-white dark:bg-surface-dark border-b dark:border-gray-800 sticky top-0 z-20 shadow-sm">
         <div className="flex items-center justify-between">
           <LogoSmall />
@@ -122,35 +122,44 @@ const UnitList: React.FC = () => {
               <div
                 key={ap.id}
                 onClick={() => navigate(`/residents/${ap.id}`)}
-                className="bg-white dark:bg-surface-dark p-5 rounded-[32px] shadow-sm border border-white dark:border-gray-800 active:scale-[0.98] transition-all relative group overflow-hidden"
+                className="bg-white dark:bg-surface-dark p-5 rounded-[2.5rem] shadow-sm border border-slate-50 dark:border-gray-800 active:scale-[0.98] transition-all relative group overflow-hidden"
               >
                 <div className="flex items-center gap-4">
                   <div className="size-16 rounded-2xl bg-slate-50 dark:bg-gray-800 flex flex-col items-center justify-center border border-slate-100 dark:border-gray-700 shadow-inner flex-shrink-0">
-                    <span className={`text-lg font-black leading-none ${ap.block === 'B' ? 'text-[#166534]' : 'text-primary'}`}>{ap.number}</span>
-                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Bl {ap.block}</span>
+                    <span className={`text-lg font-black leading-none tracking-tighter ${ap.block === 'B' ? 'text-[#166534]' : 'text-primary'}`}>{ap.number}</span>
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">Bl {ap.block}</span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-black text-slate-800 dark:text-white truncate text-lg uppercase tracking-tighter leading-tight">
-                      {ap.residentName}
+                      {ap.residentName || 'Unidade Vazia'}
                     </h3>
-                    <div className="mt-1 flex items-center gap-2">
+                    <div className="mt-1.5 flex flex-wrap gap-2">
                       <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-md border ${ap.residentRole === 'Proprietário'
                         ? 'bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800'
                         : 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800'
                         }`}>
-                        {ap.residentRole}
+                        {ap.residentRole || 'Sem Vínculo'}
                       </span>
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-xs text-slate-300">contacts</span>
+                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Informações OK</span>
+                      </div>
                     </div>
                   </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/units/${ap.id}/edit`);
-                    }}
-                    className="size-11 rounded-xl bg-slate-50 dark:bg-gray-800 text-slate-400 hover:text-primary transition-all flex items-center justify-center"
-                  >
-                    <span className="material-symbols-outlined text-xl">edit</span>
-                  </button>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/units/${ap.id}/edit`);
+                      }}
+                      className="size-10 rounded-xl bg-slate-50 dark:bg-gray-800 text-slate-400 hover:text-primary transition-all flex items-center justify-center border border-slate-100 dark:border-gray-700"
+                    >
+                      <span className="material-symbols-outlined text-xl">edit</span>
+                    </button>
+                    <div className="size-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary">
+                      <span className="material-symbols-outlined text-xl">verified</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))

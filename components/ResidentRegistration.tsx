@@ -34,6 +34,9 @@ const ResidentRegistration: React.FC = () => {
     const [garageSpot, setGarageSpot] = useState('');
     const [isFinancialResponsible, setIsFinancialResponsible] = useState(true);
     const [financialResponsibleName, setFinancialResponsibleName] = useState('');
+    const [financialResponsibleCpf, setFinancialResponsibleCpf] = useState('');
+    const [ownerName, setOwnerName] = useState('');
+    const [ownerPhone, setOwnerPhone] = useState('');
     const [additionalResidents, setAdditionalResidents] = useState<AdditionalResident[]>([]);
 
     useEffect(() => {
@@ -224,9 +227,26 @@ const ResidentRegistration: React.FC = () => {
                 newErrors.garageSpot = 'Vaga é obrigatória.';
                 isValid = false;
             }
-            if (!isFinancialResponsible && !financialResponsibleName.trim()) {
-                newErrors.financialResponsibleName = 'Informe o responsável.';
-                isValid = false;
+            if (!isFinancialResponsible) {
+                if (!financialResponsibleName.trim()) {
+                    newErrors.financialResponsibleName = 'Informe o responsável.';
+                    isValid = false;
+                }
+                if (!validateCPF(financialResponsibleCpf)) {
+                    newErrors.financialResponsibleCpf = 'CPF inválido.';
+                    isValid = false;
+                }
+            }
+
+            if (residentType === 'Inquilino') {
+                if (!ownerName.trim()) {
+                    newErrors.ownerName = 'Informe o proprietário.';
+                    isValid = false;
+                }
+                if (!validatePhone(ownerPhone)) {
+                    newErrors.ownerPhone = 'Telefone inválido.';
+                    isValid = false;
+                }
             }
         }
 
@@ -277,6 +297,9 @@ const ResidentRegistration: React.FC = () => {
                 garage_spot: garageSpot,
                 is_financial_responsible: isFinancialResponsible,
                 financial_responsible_name: isFinancialResponsible ? null : financialResponsibleName,
+                financial_responsible_cpf: isFinancialResponsible ? null : financialResponsibleCpf.replace(/[^\d]/g, ''),
+                owner_name: residentType === 'Inquilino' ? ownerName : null,
+                owner_phone: residentType === 'Inquilino' ? ownerPhone.replace(/[^\d]/g, '') : null,
                 additional_residents: additionalResidents,
                 status: 'PENDENTE'
             }]);
@@ -291,7 +314,7 @@ const ResidentRegistration: React.FC = () => {
 
     if (success) {
         return (
-            <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-6">
+            <div className="flex-1 bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-6">
                 <div className="w-full max-w-md bg-white dark:bg-slate-800 rounded-[32px] p-10 text-center shadow-xl border border-slate-100 dark:border-slate-700">
                     <div className="size-20 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
                         <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-4xl">check_circle</span>
@@ -312,7 +335,7 @@ const ResidentRegistration: React.FC = () => {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4 sm:p-6 pb-20">
+        <div className="flex-1 flex flex-col bg-slate-50 dark:bg-slate-900 p-4 sm:p-6 pb-20 overflow-y-auto">
             <div className="w-full max-w-lg mx-auto bg-white dark:bg-slate-800 rounded-[40px] shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
                 {/* Header */}
                 <div className="p-6 sm:p-8 bg-gradient-to-br from-primary to-primary-dark text-white">
@@ -457,6 +480,57 @@ const ResidentRegistration: React.FC = () => {
                                     </div>
                                 </div>
 
+                                {residentType === 'Inquilino' && (
+                                    <div className="p-5 bg-amber-50/50 dark:bg-amber-900/10 rounded-3xl border border-amber-100 dark:border-amber-900/20 space-y-4 animate-in slide-in-from-top-2 duration-300">
+                                        <div className="space-y-1">
+                                            <h4 className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">Informações do Proprietário</h4>
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nome do Proprietário</label>
+                                            <input
+                                                type="text"
+                                                value={ownerName}
+                                                onChange={(e) => {
+                                                    setOwnerName(e.target.value);
+                                                    if (e.target.value.trim()) {
+                                                        setErrors(prev => {
+                                                            const newErrors = { ...prev };
+                                                            delete newErrors.ownerName;
+                                                            return newErrors;
+                                                        });
+                                                    }
+                                                }}
+                                                className={`input-field ${errors.ownerName ? '!border-red-400 !bg-red-50' : ''}`}
+                                                placeholder="Nome completo do proprietário"
+                                            />
+                                            {errors.ownerName && <span className="text-red-500 text-[10px] font-bold uppercase ml-2">{errors.ownerName}</span>}
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">WhatsApp do Proprietário</label>
+                                            <input
+                                                type="tel"
+                                                value={ownerPhone}
+                                                onChange={(e) => {
+                                                    const formatted = formatPhone(e.target.value);
+                                                    setOwnerPhone(formatted);
+                                                    const cleanLen = formatted.replace(/\D/g, '').length;
+                                                    if (cleanLen >= 10 && cleanLen <= 11) {
+                                                        setErrors(prev => {
+                                                            const newErrors = { ...prev };
+                                                            delete newErrors.ownerPhone;
+                                                            return newErrors;
+                                                        });
+                                                    }
+                                                }}
+                                                maxLength={15}
+                                                className={`input-field ${errors.ownerPhone ? '!border-red-400 !bg-red-50' : ''}`}
+                                                placeholder="(00) 00000-0000"
+                                            />
+                                            {errors.ownerPhone && <span className="text-red-500 text-[10px] font-bold uppercase ml-2">{errors.ownerPhone}</span>}
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className="pt-4 border-t border-slate-50 dark:border-slate-700">
                                     <div className="flex items-center gap-3">
                                         <button
@@ -476,25 +550,60 @@ const ResidentRegistration: React.FC = () => {
                                 </div>
 
                                 {!isFinancialResponsible && (
-                                    <div className="space-y-1.5 animate-in slide-in-from-top-2 duration-300">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nome do Responsável Financeiro</label>
-                                        <input
-                                            type="text"
-                                            value={financialResponsibleName}
-                                            onChange={(e) => {
-                                                setFinancialResponsibleName(e.target.value);
-                                                if (e.target.value.trim()) {
-                                                    setErrors(prev => {
-                                                        const newErrors = { ...prev };
-                                                        delete newErrors.financialResponsibleName;
-                                                        return newErrors;
-                                                    });
-                                                }
-                                            }}
-                                            className={`input-field ${errors.financialResponsibleName ? '!border-red-400 !bg-red-50' : ''}`}
-                                            placeholder="Nome completo para emissão do boleto"
-                                        />
-                                        {errors.financialResponsibleName && <span className="text-red-500 text-[10px] font-bold uppercase ml-2">{errors.financialResponsibleName}</span>}
+                                    <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nome do Responsável Financeiro</label>
+                                            <input
+                                                type="text"
+                                                value={financialResponsibleName}
+                                                onChange={(e) => {
+                                                    setFinancialResponsibleName(e.target.value);
+                                                    if (e.target.value.trim()) {
+                                                        setErrors(prev => {
+                                                            const newErrors = { ...prev };
+                                                            delete newErrors.financialResponsibleName;
+                                                            return newErrors;
+                                                        });
+                                                    }
+                                                }}
+                                                className={`input-field ${errors.financialResponsibleName ? '!border-red-400 !bg-red-50' : ''}`}
+                                                placeholder="Nome completo para emissão do boleto"
+                                            />
+                                            {errors.financialResponsibleName && <span className="text-red-500 text-[10px] font-bold uppercase ml-2">{errors.financialResponsibleName}</span>}
+                                        </div>
+
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">CPF do Responsável Financeiro</label>
+                                            <input
+                                                type="text"
+                                                value={financialResponsibleCpf}
+                                                onChange={(e) => {
+                                                    const formatted = formatCPF(e.target.value);
+                                                    setFinancialResponsibleCpf(formatted);
+                                                    if (formatted.length === 14) {
+                                                        if (!validateCPF(formatted)) {
+                                                            setErrors(prev => ({ ...prev, financialResponsibleCpf: 'CPF inválido.' }));
+                                                        } else {
+                                                            setErrors(prev => {
+                                                                const newErrors = { ...prev };
+                                                                delete newErrors.financialResponsibleCpf;
+                                                                return newErrors;
+                                                            });
+                                                        }
+                                                    } else {
+                                                        setErrors(prev => {
+                                                            const newErrors = { ...prev };
+                                                            delete newErrors.financialResponsibleCpf;
+                                                            return newErrors;
+                                                        });
+                                                    }
+                                                }}
+                                                maxLength={14}
+                                                className={`input-field ${errors.financialResponsibleCpf ? '!border-red-400 !bg-red-50' : ''}`}
+                                                placeholder="000.000.000-00"
+                                            />
+                                            {errors.financialResponsibleCpf && <span className="text-red-500 text-[10px] font-bold uppercase ml-2">{errors.financialResponsibleCpf}</span>}
+                                        </div>
                                     </div>
                                 )}
                             </div>

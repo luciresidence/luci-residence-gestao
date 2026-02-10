@@ -44,7 +44,34 @@ const ApartmentList: React.FC = () => {
         residentRole: apt.resident_role,
         avatarUrl: apt.avatar_url
       }));
-      setApartments(mappedApts);
+
+      // Ordenação customizada: Unidades com texto primeiro, depois Bloco A, depois Bloco B
+      const sortedApts = mappedApts.sort((a, b) => {
+        const numA = parseInt(a.number);
+        const numB = parseInt(b.number);
+        const isNumericA = !isNaN(numA);
+        const isNumericB = !isNaN(numB);
+
+        // Unidades com texto (não numéricos) sempre primeiro
+        if (!isNumericA && isNumericB) return -1;
+        if (isNumericA && !isNumericB) return 1;
+
+        // Se ambos são texto, ordenar alfabeticamente
+        if (!isNumericA && !isNumericB) {
+          return a.number.localeCompare(b.number);
+        }
+
+        // Se ambos são numéricos, separar por bloco
+        if (a.block !== b.block) {
+          // Bloco A antes do Bloco B
+          return a.block.localeCompare(b.block);
+        }
+
+        // Dentro do mesmo bloco, ordenar por número
+        return numA - numB;
+      });
+
+      setApartments(sortedApts);
     }
 
     if (reads) setSavedReadings(reads);
@@ -170,7 +197,7 @@ const ApartmentList: React.FC = () => {
   };
 
   return (
-    <div className="scroll-container bg-slate-50 dark:bg-background-dark">
+    <div className="scroll-container flex-1 bg-slate-50 dark:bg-background-dark">
       <div className="pt-safe pb-32">
         <header className="sticky top-0 z-20 bg-white/95 dark:bg-surface-dark/95 backdrop-blur-md px-5 pb-4 pt-6 border-b dark:border-gray-800 shadow-sm">
           <div className="flex items-center justify-between">
@@ -267,7 +294,7 @@ const ApartmentList: React.FC = () => {
                 >
                   <div className="size-16 rounded-2xl bg-slate-50 dark:bg-gray-800 flex flex-col items-center justify-center relative border border-slate-100 dark:border-gray-700 flex-shrink-0 shadow-inner">
                     <span className="font-black text-primary text-lg tracking-tighter leading-none">{ap.number}</span>
-                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Bl {ap.block}</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Bl {ap.block}</span>
                     {isFullyDone && (
                       <div className="absolute -top-1 -right-1 size-6 bg-green-500 rounded-full flex items-center justify-center border-2 border-white dark:border-surface-dark shadow-sm">
                         <span className="material-symbols-outlined text-[10px] text-white font-black">check</span>

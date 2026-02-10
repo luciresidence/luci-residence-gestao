@@ -90,7 +90,7 @@ const Settings: React.FC<SettingsProps> = ({ toggleDarkMode, isDarkMode, onLogou
 
   if (view === 'profile') {
     return (
-      <div className="pb-24 pt-safe min-h-screen bg-slate-50 dark:bg-background-dark transition-colors duration-200">
+      <div className="pb-24 pt-safe flex-1 flex flex-col bg-slate-50 dark:bg-background-dark transition-colors duration-200">
         <header className="px-4 py-4 flex items-center bg-white dark:bg-surface-dark border-b dark:border-gray-800 sticky top-0 z-10">
           <button onClick={() => setView('main')} className="p-2 -ml-2 text-slate-500">
             <span className="material-symbols-outlined">arrow_back</span>
@@ -145,7 +145,7 @@ const Settings: React.FC<SettingsProps> = ({ toggleDarkMode, isDarkMode, onLogou
 
   if (view === 'password') {
     return (
-      <div className="pb-24 pt-safe min-h-screen bg-slate-50 dark:bg-background-dark transition-colors duration-200">
+      <div className="pb-24 pt-safe flex-1 flex flex-col bg-slate-50 dark:bg-background-dark transition-colors duration-200">
         <header className="px-4 py-4 flex items-center bg-white dark:bg-surface-dark border-b dark:border-gray-800 sticky top-0 z-10">
           <button onClick={() => setView('main')} className="p-2 -ml-2 text-slate-500">
             <span className="material-symbols-outlined">arrow_back</span>
@@ -203,7 +203,7 @@ const Settings: React.FC<SettingsProps> = ({ toggleDarkMode, isDarkMode, onLogou
   }
 
   return (
-    <div className="pb-24 pt-safe min-h-screen bg-slate-50 dark:bg-background-dark transition-colors duration-200">
+    <div className="pb-24 pt-safe flex-1 flex flex-col bg-slate-50 dark:bg-background-dark transition-colors duration-200">
       {/* Header */}
       <header className="px-4 py-4 flex items-center bg-white dark:bg-surface-dark border-b dark:border-gray-800 sticky top-0 z-10">
         <button

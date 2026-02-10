@@ -12,6 +12,9 @@ interface Registration {
     garage_spot: string;
     is_financial_responsible: boolean;
     financial_responsible_name: string;
+    financial_responsible_cpf: string;
+    owner_name: string;
+    owner_phone: string;
     additional_residents: any[];
     status: string;
     created_at: string;
@@ -37,6 +40,9 @@ const RegistrationManager: React.FC = () => {
     const [editGarageSpot, setEditGarageSpot] = useState('');
     const [editIsFinancialResponsible, setEditIsFinancialResponsible] = useState(true);
     const [editFinancialResponsibleName, setEditFinancialResponsibleName] = useState('');
+    const [editFinancialResponsibleCpf, setEditFinancialResponsibleCpf] = useState('');
+    const [editOwnerName, setEditOwnerName] = useState('');
+    const [editOwnerPhone, setEditOwnerPhone] = useState('');
 
     useEffect(() => {
         fetchRegistrations();
@@ -52,6 +58,10 @@ const RegistrationManager: React.FC = () => {
             setEditGarageSpot(selectedReg.garage_spot);
             setEditIsFinancialResponsible(selectedReg.is_financial_responsible);
             setEditFinancialResponsibleName(selectedReg.financial_responsible_name || '');
+            setEditFinancialResponsibleName(selectedReg.financial_responsible_name || '');
+            setEditFinancialResponsibleCpf(selectedReg.financial_responsible_cpf || '');
+            setEditOwnerName(selectedReg.owner_name || '');
+            setEditOwnerPhone(selectedReg.owner_phone || '');
         }
     }, [selectedReg, isEditing]);
 
@@ -97,7 +107,10 @@ const RegistrationManager: React.FC = () => {
                 resident_type: editResidentType,
                 garage_spot: editGarageSpot,
                 is_financial_responsible: editIsFinancialResponsible,
-                financial_responsible_name: editIsFinancialResponsible ? null : editFinancialResponsibleName
+                financial_responsible_name: editIsFinancialResponsible ? null : editFinancialResponsibleName,
+                financial_responsible_cpf: editIsFinancialResponsible ? null : editFinancialResponsibleCpf.replace(/\D/g, ''),
+                owner_name: editResidentType === 'Inquilino' ? editOwnerName : null,
+                owner_phone: editResidentType === 'Inquilino' ? editOwnerPhone.replace(/\D/g, '') : null
             })
             .eq('id', selectedReg.id);
 
@@ -112,7 +125,10 @@ const RegistrationManager: React.FC = () => {
                 resident_type: editResidentType,
                 garage_spot: editGarageSpot,
                 is_financial_responsible: editIsFinancialResponsible,
-                financial_responsible_name: editIsFinancialResponsible ? null : editFinancialResponsibleName
+                financial_responsible_name: editIsFinancialResponsible ? null : editFinancialResponsibleName,
+                financial_responsible_cpf: editIsFinancialResponsible ? null : editFinancialResponsibleCpf.replace(/\D/g, ''),
+                owner_name: editResidentType === 'Inquilino' ? editOwnerName : null,
+                owner_phone: editResidentType === 'Inquilino' ? editOwnerPhone.replace(/\D/g, '') : null
             } as Registration;
             setSelectedReg(updatedReg);
             setIsEditing(false);
@@ -177,7 +193,7 @@ const RegistrationManager: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col h-full bg-slate-50 dark:bg-background-dark">
+        <div className="flex flex-col flex-1 bg-slate-50 dark:bg-background-dark">
             {/* Header */}
             <div className="p-6 bg-white dark:bg-surface-dark border-b dark:border-gray-800 flex justify-between items-center">
                 <div>
@@ -354,17 +370,56 @@ const RegistrationManager: React.FC = () => {
                                         </div>
 
                                         {!editIsFinancialResponsible && (
-                                            <div className="space-y-1.5">
-                                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Nome do Responsável Financeiro</label>
-                                                <input
-                                                    type="text"
-                                                    value={editFinancialResponsibleName}
-                                                    onChange={(e) => setEditFinancialResponsibleName(e.target.value)}
-                                                    className="w-full h-12 px-4 rounded-xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-slate-900 text-sm font-semibold outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                                                />
+                                            <div className="space-y-4">
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Nome do Responsável Financeiro</label>
+                                                    <input
+                                                        type="text"
+                                                        value={editFinancialResponsibleName}
+                                                        onChange={(e) => setEditFinancialResponsibleName(e.target.value)}
+                                                        className="w-full h-12 px-4 rounded-xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-slate-900 text-sm font-semibold outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">CPF do Responsável</label>
+                                                    <input
+                                                        type="text"
+                                                        value={editFinancialResponsibleCpf}
+                                                        onChange={(e) => setEditFinancialResponsibleCpf(formatCPF(e.target.value))}
+                                                        maxLength={14}
+                                                        className="w-full h-12 px-4 rounded-xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-slate-900 text-sm font-semibold outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                                                    />
+                                                </div>
                                             </div>
                                         )}
                                     </div>
+
+                                    {editResidentType === 'Inquilino' && (
+                                        <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-gray-800">
+                                            <div className="space-y-1">
+                                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Proprietário</h4>
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Nome do Proprietário</label>
+                                                <input
+                                                    type="text"
+                                                    value={editOwnerName}
+                                                    onChange={(e) => setEditOwnerName(e.target.value)}
+                                                    className="w-full h-12 px-4 rounded-xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-slate-900 text-sm font-semibold outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                                                />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Telefone do Proprietário</label>
+                                                <input
+                                                    type="tel"
+                                                    value={editOwnerPhone}
+                                                    onChange={(e) => setEditOwnerPhone(formatPhone(e.target.value))}
+                                                    maxLength={15}
+                                                    className="w-full h-12 px-4 rounded-xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-slate-900 text-sm font-semibold outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
                                 </>
                             ) : (
                                 // View Mode
@@ -394,10 +449,31 @@ const RegistrationManager: React.FC = () => {
                                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Responsável Financeiro</label>
                                         <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-gray-800">
                                             <div className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                                                {selectedReg.is_financial_responsible ? 'O próprio morador' : selectedReg.financial_responsible_name}
+                                                {selectedReg.is_financial_responsible ? 'O próprio morador' : (
+                                                    <div className="space-y-1">
+                                                        <div>{selectedReg.financial_responsible_name}</div>
+                                                        <div className="text-[10px] text-slate-400">CPF: {selectedReg.financial_responsible_cpf ? formatCPF(selectedReg.financial_responsible_cpf) : '-'}</div>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
+
+                                    {selectedReg.resident_type === 'Inquilino' && (selectedReg.owner_name || selectedReg.owner_phone) && (
+                                        <div className="space-y-2">
+                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Proprietário</label>
+                                            <div className="p-4 rounded-2xl bg-amber-50/50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/20">
+                                                <div className="space-y-1">
+                                                    <div className="text-xs font-bold text-slate-700 dark:text-slate-300">{selectedReg.owner_name || 'Nome não informado'}</div>
+                                                    {selectedReg.owner_phone && (
+                                                        <div className="text-[10px] text-slate-400 font-medium">
+                                                            Tel: {formatPhone(selectedReg.owner_phone)}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {selectedReg.additional_residents.length > 0 && (
                                         <div className="space-y-4">
@@ -462,9 +538,10 @@ const RegistrationManager: React.FC = () => {
                             )}
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                </div >
+            )
+            }
+        </div >
     );
 };
 

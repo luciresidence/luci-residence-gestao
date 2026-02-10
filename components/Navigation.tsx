@@ -16,8 +16,8 @@ const Navigation: React.FC = () => {
   ];
 
   return (
-    <nav className="z-50 w-full bg-white/95 dark:bg-surface-dark/95 backdrop-blur-md border-t dark:border-gray-800 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-      <div className="flex justify-around items-center h-16 mb-[env(safe-area-inset-bottom)]">
+    <nav className="z-50 w-full bg-white/95 dark:bg-surface-dark/95 backdrop-blur-md border-t dark:border-gray-800 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] pb-[env(safe-area-inset-bottom)]">
+      <div className="flex justify-around items-center h-16">
         {navItems.map(item => {
           const isActive = location.pathname.startsWith(item.path);
           return (

@@ -41,7 +41,7 @@ const History: React.FC<HistoryProps> = ({ onImageClick }) => {
   }
 
   return (
-    <div className="pb-24 pt-safe min-h-screen bg-slate-50 dark:bg-background-dark">
+    <div className="pb-24 pt-safe flex-1 flex flex-col bg-slate-50 dark:bg-background-dark">
       <header className="px-5 py-8 bg-white dark:bg-surface-dark border-b dark:border-gray-800 sticky top-0 z-20 shadow-sm">
         <h1 className="text-2xl font-bold uppercase tracking-tighter italic text-primary">Histórico</h1>
         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[4px] mt-1">Registros de Consumo</p>
