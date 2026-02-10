@@ -11,7 +11,7 @@ const Navigation: React.FC = () => {
     { label: 'Medições', icon: 'assignment_turned_in', path: '/readings' },
     { label: 'Histórico', icon: 'history', path: '/history' },
     { label: 'Unidades', icon: 'domain', path: '/units' },
-    { label: 'Pedidos', icon: 'how_to_reg', path: '/requests' },
+    { label: 'Formulário', icon: 'how_to_reg', path: '/requests' },
     { label: 'Perfil', icon: 'person', path: '/settings' },
   ];
 

@@ -43,6 +43,7 @@ const RegistrationManager: React.FC = () => {
     const [editFinancialResponsibleCpf, setEditFinancialResponsibleCpf] = useState('');
     const [editOwnerName, setEditOwnerName] = useState('');
     const [editOwnerPhone, setEditOwnerPhone] = useState('');
+    const [editAdditionalResidents, setEditAdditionalResidents] = useState<any[]>([]);
 
     useEffect(() => {
         fetchRegistrations();
@@ -58,10 +59,10 @@ const RegistrationManager: React.FC = () => {
             setEditGarageSpot(selectedReg.garage_spot);
             setEditIsFinancialResponsible(selectedReg.is_financial_responsible);
             setEditFinancialResponsibleName(selectedReg.financial_responsible_name || '');
-            setEditFinancialResponsibleName(selectedReg.financial_responsible_name || '');
             setEditFinancialResponsibleCpf(selectedReg.financial_responsible_cpf || '');
             setEditOwnerName(selectedReg.owner_name || '');
             setEditOwnerPhone(selectedReg.owner_phone || '');
+            setEditAdditionalResidents(selectedReg.additional_residents || []);
         }
     }, [selectedReg, isEditing]);
 
@@ -70,6 +71,7 @@ const RegistrationManager: React.FC = () => {
         const { data, error } = await supabase
             .from('resident_registrations')
             .select('*, apartments(number, block)')
+            .eq('status', 'PENDENTE')
             .order('created_at', { ascending: false });
 
         if (error) {
@@ -110,7 +112,8 @@ const RegistrationManager: React.FC = () => {
                 financial_responsible_name: editIsFinancialResponsible ? null : editFinancialResponsibleName,
                 financial_responsible_cpf: editIsFinancialResponsible ? null : editFinancialResponsibleCpf.replace(/\D/g, ''),
                 owner_name: editResidentType === 'Inquilino' ? editOwnerName : null,
-                owner_phone: editResidentType === 'Inquilino' ? editOwnerPhone.replace(/\D/g, '') : null
+                owner_phone: editResidentType === 'Inquilino' ? editOwnerPhone.replace(/\D/g, '') : null,
+                additional_residents: editAdditionalResidents
             })
             .eq('id', selectedReg.id);
 
@@ -128,7 +131,8 @@ const RegistrationManager: React.FC = () => {
                 financial_responsible_name: editIsFinancialResponsible ? null : editFinancialResponsibleName,
                 financial_responsible_cpf: editIsFinancialResponsible ? null : editFinancialResponsibleCpf.replace(/\D/g, ''),
                 owner_name: editResidentType === 'Inquilino' ? editOwnerName : null,
-                owner_phone: editResidentType === 'Inquilino' ? editOwnerPhone.replace(/\D/g, '') : null
+                owner_phone: editResidentType === 'Inquilino' ? editOwnerPhone.replace(/\D/g, '') : null,
+                additional_residents: editAdditionalResidents
             } as Registration;
             setSelectedReg(updatedReg);
             setIsEditing(false);
@@ -420,6 +424,77 @@ const RegistrationManager: React.FC = () => {
                                             </div>
                                         </div>
                                     )}
+
+                                    <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-gray-800">
+                                        <div className="flex items-center justify-between">
+                                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Outros Moradores</h4>
+                                            <button
+                                                type="button"
+                                                onClick={() => setEditAdditionalResidents([...editAdditionalResidents, { name: '', birthDate: '', cpf: '' }])}
+                                                className="text-[9px] font-black text-primary uppercase bg-primary/5 px-2 py-1 rounded-md"
+                                            >
+                                                + Adicionar
+                                            </button>
+                                        </div>
+                                        <div className="space-y-3">
+                                            {editAdditionalResidents.map((res, idx) => (
+                                                <div key={idx} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-gray-800 relative space-y-3 shadow-inner">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setEditAdditionalResidents(editAdditionalResidents.filter((_, i) => i !== idx))}
+                                                        className="absolute top-2 right-2 size-6 rounded-full bg-red-50 text-red-500 flex items-center justify-center active:scale-90 transition-transform"
+                                                    >
+                                                        <span className="material-symbols-outlined text-sm">close</span>
+                                                    </button>
+                                                    <div className="space-y-1">
+                                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Nome</label>
+                                                        <input
+                                                            type="text"
+                                                            value={res.name}
+                                                            onChange={(e) => {
+                                                                const updated = [...editAdditionalResidents];
+                                                                updated[idx] = { ...updated[idx], name: e.target.value };
+                                                                setEditAdditionalResidents(updated);
+                                                            }}
+                                                            className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-semibold outline-none focus:ring-2 focus:ring-primary/20 transition-all font-bold"
+                                                        />
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        <div className="space-y-1">
+                                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">CPF</label>
+                                                            <input
+                                                                type="text"
+                                                                value={res.cpf || ''}
+                                                                onChange={(e) => {
+                                                                    const updated = [...editAdditionalResidents];
+                                                                    updated[idx] = { ...updated[idx], cpf: formatCPF(e.target.value) };
+                                                                    setEditAdditionalResidents(updated);
+                                                                }}
+                                                                maxLength={14}
+                                                                className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-semibold outline-none focus:ring-2 focus:ring-primary/20 transition-all font-bold"
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Nascimento</label>
+                                                            <input
+                                                                type="date"
+                                                                value={res.birthDate || ''}
+                                                                onChange={(e) => {
+                                                                    const updated = [...editAdditionalResidents];
+                                                                    updated[idx] = { ...updated[idx], birthDate: e.target.value };
+                                                                    setEditAdditionalResidents(updated);
+                                                                }}
+                                                                className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-semibold outline-none focus:ring-2 focus:ring-primary/20 transition-all font-bold"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {editAdditionalResidents.length === 0 && (
+                                                <div className="text-[9px] text-slate-400 uppercase font-bold text-center py-2">Nenhum morador adicional</div>
+                                            )}
+                                        </div>
+                                    </div>
                                 </>
                             ) : (
                                 // View Mode

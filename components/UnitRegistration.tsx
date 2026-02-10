@@ -2,82 +2,213 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { storage } from '../data';
 import { Apartment } from '../types';
+
+interface AdditionalResident {
+  name: string;
+  birthDate: string;
+  cpf: string;
+}
 
 const UnitRegistration: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEdit = !!id;
 
-  const [formData, setFormData] = useState<Partial<Apartment>>({
-    number: '',
-    block: '',
-    residentName: '',
-    residentRole: 'Proprietário'
-  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Unit Data
+  const [number, setNumber] = useState('');
+  const [block, setBlock] = useState('');
+
+  // Resident Data
+  const [residentName, setResidentName] = useState('');
+  const [cpf, setCpf] = useState('');
+  const [birthDate, setBirthDate] = useState('');
+  const [phone, setPhone] = useState('');
+  const [residentType, setResidentType] = useState('Proprietário');
+  const [garageSpot, setGarageSpot] = useState('');
+
+  // Owner Data (if tenant)
+  const [ownerName, setOwnerName] = useState('');
+  const [ownerPhone, setOwnerPhone] = useState('');
+
+  // Financial Responsible
+  const [isFinancialResponsible, setIsFinancialResponsible] = useState(true);
+  const [financialResponsibleName, setFinancialResponsibleName] = useState('');
+  const [financialResponsibleCpf, setFinancialResponsibleCpf] = useState('');
+
+  // Additional Residents
+  const [additionalResidents, setAdditionalResidents] = useState<AdditionalResident[]>([]);
 
   useEffect(() => {
     if (isEdit) {
-      const fetchApt = async () => {
-        const { data } = await supabase
-          .from('apartments')
-          .select('*')
-          .eq('id', id)
-          .single();
-
-        if (data) {
-          setFormData({
-            ...data,
-            residentName: data.resident_name,
-            residentRole: data.resident_role,
-            avatarUrl: data.avatar_url
-          });
-        }
-      };
-      fetchApt();
+      fetchData();
+    } else {
+      setIsLoading(false);
     }
   }, [id, isEdit]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+  const fetchData = async () => {
+    setIsLoading(true);
+    // 1. Fetch Apartment Data
+    const { data: apt } = await supabase
+      .from('apartments')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (apt) {
+      setNumber(apt.number);
+      setBlock(apt.block);
+      // Default resident info if no registration found
+      setResidentName(apt.resident_name || '');
+      setResidentType(apt.resident_role || 'Proprietário');
+
+      // 2. Fetch Latest Approved Registration
+      const { data: reg } = await supabase
+        .from('resident_registrations')
+        .select('*')
+        .eq('apartment_id', id)
+        .eq('status', 'APROVADO')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (reg) {
+        setResidentName(reg.full_name);
+        setCpf(reg.cpf ? formatCPF(reg.cpf) : '');
+        setBirthDate(reg.birth_date || '');
+        setPhone(reg.phone ? formatPhone(reg.phone) : '');
+        setResidentType(reg.resident_type);
+        setGarageSpot(reg.garage_spot || '');
+        setIsFinancialResponsible(reg.is_financial_responsible);
+        setFinancialResponsibleName(reg.financial_responsible_name || '');
+        setFinancialResponsibleCpf(reg.financial_responsible_cpf ? formatCPF(reg.financial_responsible_cpf) : '');
+        setOwnerName(reg.owner_name || '');
+        setOwnerPhone(reg.owner_phone ? formatPhone(reg.owner_phone) : '');
+        setAdditionalResidents(reg.additional_residents || []);
+      }
+    }
+    setIsLoading(false);
   };
 
-  const handleRoleSelect = (role: 'Proprietário' | 'Inquilino') => {
-    setFormData(prev => ({ ...prev, residentRole: role }));
+  // Helpers
+  const formatCPF = (value: string) => {
+    const v = value.replace(/\D/g, '').slice(0, 11);
+    return v.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+  };
+
+  const formatPhone = (value: string) => {
+    const v = value.replace(/\D/g, '').slice(0, 11);
+    if (v.length > 10) return v.replace(/^(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+    return v.replace(/^(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+  };
+
+  const addResident = () => {
+    setAdditionalResidents([...additionalResidents, { name: '', birthDate: '', cpf: '' }]);
+  };
+
+  const removeResident = (index: number) => {
+    setAdditionalResidents(additionalResidents.filter((_, i) => i !== index));
+  };
+
+  const updateResident = (index: number, field: keyof AdditionalResident, value: string) => {
+    const updated = [...additionalResidents];
+    if (field === 'cpf') value = formatCPF(value);
+    updated[index] = { ...updated[index], [field]: value };
+    setAdditionalResidents(updated);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.number || !formData.block || !formData.residentName) {
-      alert('Por favor, preencha todos os campos obrigatórios.');
-      return;
+    setIsSaving(true);
+
+    try {
+      // 1. Update/Insert Apartment Structure
+      const aptPayload = {
+        number,
+        block,
+        resident_name: residentName,
+        resident_role: residentType
+      };
+
+      let aptId = id;
+
+      if (isEdit) {
+        const { error } = await supabase.from('apartments').update(aptPayload).eq('id', id);
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase.from('apartments').insert([aptPayload]).select().single();
+        if (error) throw error;
+        aptId = data.id;
+      }
+
+      // 2. Create New Approved Registration (History) OR Update Latest?
+      // Strategy: Create a new approved registration to keep history of changes, 
+      // OR update the latest one if we want to "fix" it.
+      // Let's UPDATE the latest approved one if it exists to avoid duplication on simple edits,
+      // or INSERT if none exists.
+
+      // First, check if there is an existing approved registration
+      const { data: existingReg } = await supabase
+        .from('resident_registrations')
+        .select('id')
+        .eq('apartment_id', aptId)
+        .eq('status', 'APROVADO')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const regPayload = {
+        apartment_id: aptId,
+        full_name: residentName,
+        cpf: cpf.replace(/\D/g, ''),
+        birth_date: birthDate,
+        phone: phone.replace(/\D/g, ''),
+        resident_type: residentType,
+        garage_spot: garageSpot,
+        is_financial_responsible: isFinancialResponsible,
+        financial_responsible_name: isFinancialResponsible ? null : financialResponsibleName,
+        financial_responsible_cpf: isFinancialResponsible ? null : financialResponsibleCpf.replace(/\D/g, ''),
+        owner_name: residentType === 'Inquilino' ? ownerName : null,
+        owner_phone: residentType === 'Inquilino' ? ownerPhone.replace(/\D/g, '') : null,
+        additional_residents: additionalResidents,
+        status: 'APROVADO'
+      };
+
+      if (existingReg) {
+        const { error } = await supabase
+          .from('resident_registrations')
+          .update(regPayload)
+          .eq('id', existingReg.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('resident_registrations')
+          .insert([regPayload]);
+        if (error) throw error;
+      }
+
+      alert('Dados atualizados com sucesso!');
+      navigate(-1);
+
+    } catch (error: any) {
+      console.error(error);
+      alert('Erro ao salvar: ' + error.message);
+    } finally {
+      setIsSaving(false);
     }
-
-    const payload = {
-      number: formData.number!,
-      block: formData.block!,
-      resident_name: formData.residentName!,
-      resident_role: formData.residentRole as 'Proprietário' | 'Inquilino',
-      avatar_url: formData.avatarUrl || `https://picsum.photos/seed/${formData.number}/200`
-    };
-
-    if (isEdit) {
-      const { error } = await supabase
-        .from('apartments')
-        .update(payload)
-        .eq('id', id);
-      if (error) alert('Erro ao atualizar: ' + error.message);
-    } else {
-      const { error } = await supabase
-        .from('apartments')
-        .insert([payload]);
-      if (error) alert('Erro ao cadastrar: ' + error.message);
-    }
-
-    navigate('/units');
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center h-screen bg-slate-50 dark:bg-background-dark">
+        <div className="size-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white dark:bg-background-dark pb-40 pt-safe">
@@ -85,7 +216,7 @@ const UnitRegistration: React.FC = () => {
         <button onClick={() => navigate(-1)} className="p-2 text-slate-500">
           <span className="material-symbols-outlined">arrow_back</span>
         </button>
-        <h1 className="flex-1 text-center font-bold text-slate-800 dark:text-white mr-8">
+        <h1 className="flex-1 text-center font-bold text-slate-800 dark:text-white mr-8 uppercase tracking-widest text-sm">
           {isEdit ? 'Editar Unidade' : 'Novo Cadastro'}
         </h1>
       </header>
@@ -93,7 +224,7 @@ const UnitRegistration: React.FC = () => {
       <form onSubmit={handleSubmit} className="p-6 space-y-10">
         {/* Unit Data */}
         <section className="space-y-4">
-          <div className="flex items-center gap-2 text-primary">
+          <div className="flex items-center gap-2 text-primary border-b border-primary/10 pb-2">
             <span className="material-symbols-outlined fill-1">domain</span>
             <h2 className="font-bold text-slate-800 dark:text-white uppercase text-xs tracking-widest">Informações da Unidade</h2>
           </div>
@@ -103,9 +234,8 @@ const UnitRegistration: React.FC = () => {
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Número</label>
               <input
                 type="text"
-                name="number"
-                value={formData.number}
-                onChange={handleChange}
+                value={number}
+                onChange={(e) => setNumber(e.target.value)}
                 placeholder="Ex: 101"
                 className="w-full h-14 px-4 rounded-2xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-surface-dark text-slate-700 dark:text-white focus:ring-primary focus:border-primary transition-all font-bold text-lg"
               />
@@ -114,9 +244,8 @@ const UnitRegistration: React.FC = () => {
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Bloco</label>
               <input
                 type="text"
-                name="block"
-                value={formData.block}
-                onChange={handleChange}
+                value={block}
+                onChange={(e) => setBlock(e.target.value)}
                 placeholder="Ex: A"
                 className="w-full h-14 px-4 rounded-2xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-surface-dark text-slate-700 dark:text-white focus:ring-primary focus:border-primary transition-all font-bold text-lg"
               />
@@ -126,7 +255,7 @@ const UnitRegistration: React.FC = () => {
 
         {/* Resident Data */}
         <section className="space-y-5">
-          <div className="flex items-center gap-2 text-primary">
+          <div className="flex items-center gap-2 text-primary border-b border-primary/10 pb-2">
             <span className="material-symbols-outlined fill-1">person</span>
             <h2 className="font-bold text-slate-800 dark:text-white uppercase text-xs tracking-widest">Dados do Morador</h2>
           </div>
@@ -135,12 +264,54 @@ const UnitRegistration: React.FC = () => {
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nome Completo</label>
             <input
               type="text"
-              name="residentName"
-              value={formData.residentName}
-              onChange={handleChange}
-              placeholder="Nome do responsável"
+              value={residentName}
+              onChange={(e) => setResidentName(e.target.value)}
               className="w-full h-14 px-4 rounded-2xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-surface-dark text-slate-700 dark:text-white focus:ring-primary focus:border-primary transition-all font-bold"
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">CPF</label>
+              <input
+                type="text"
+                value={cpf}
+                onChange={(e) => setCpf(formatCPF(e.target.value))}
+                maxLength={14}
+                className="w-full h-14 px-4 rounded-2xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-surface-dark text-slate-700 dark:text-white focus:ring-primary focus:border-primary transition-all font-bold"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nascimento</label>
+              <input
+                type="date"
+                value={birthDate}
+                onChange={(e) => setBirthDate(e.target.value)}
+                className="w-full h-14 px-4 rounded-2xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-surface-dark text-slate-700 dark:text-white focus:ring-primary focus:border-primary transition-all font-bold"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">WhatsApp</label>
+              <input
+                type="text"
+                value={phone}
+                onChange={(e) => setPhone(formatPhone(e.target.value))}
+                maxLength={15}
+                className="w-full h-14 px-4 rounded-2xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-surface-dark text-slate-700 dark:text-white focus:ring-primary focus:border-primary transition-all font-bold"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Vaga</label>
+              <input
+                type="text"
+                value={garageSpot}
+                onChange={(e) => setGarageSpot(e.target.value)}
+                className="w-full h-14 px-4 rounded-2xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-surface-dark text-slate-700 dark:text-white focus:ring-primary focus:border-primary transition-all font-bold"
+              />
+            </div>
           </div>
 
           <div className="space-y-3">
@@ -148,10 +319,10 @@ const UnitRegistration: React.FC = () => {
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => handleRoleSelect('Proprietário')}
-                className={`h-14 rounded-2xl font-bold transition-all border-2 flex items-center justify-center gap-2 ${formData.residentRole === 'Proprietário'
-                    ? 'bg-primary/5 border-primary text-primary shadow-sm shadow-primary/10'
-                    : 'bg-white dark:bg-surface-dark border-slate-100 dark:border-gray-800 text-slate-400'
+                onClick={() => setResidentType('Proprietário')}
+                className={`h-14 rounded-2xl font-bold transition-all border-2 flex items-center justify-center gap-2 ${residentType === 'Proprietário'
+                  ? 'bg-primary/5 border-primary text-primary shadow-sm shadow-primary/10'
+                  : 'bg-white dark:bg-surface-dark border-slate-100 dark:border-gray-800 text-slate-400'
                   }`}
               >
                 <span className="material-symbols-outlined">key</span>
@@ -159,16 +330,142 @@ const UnitRegistration: React.FC = () => {
               </button>
               <button
                 type="button"
-                onClick={() => handleRoleSelect('Inquilino')}
-                className={`h-14 rounded-2xl font-bold transition-all border-2 flex items-center justify-center gap-2 ${formData.residentRole === 'Inquilino'
-                    ? 'bg-primary/5 border-primary text-primary shadow-sm shadow-primary/10'
-                    : 'bg-white dark:bg-surface-dark border-slate-100 dark:border-gray-800 text-slate-400'
+                onClick={() => setResidentType('Inquilino')}
+                className={`h-14 rounded-2xl font-bold transition-all border-2 flex items-center justify-center gap-2 ${residentType === 'Inquilino'
+                  ? 'bg-primary/5 border-primary text-primary shadow-sm shadow-primary/10'
+                  : 'bg-white dark:bg-surface-dark border-slate-100 dark:border-gray-800 text-slate-400'
                   }`}
               >
                 <span className="material-symbols-outlined">description</span>
                 Inquilino
               </button>
             </div>
+          </div>
+
+          {/* Owner Data if Tenant */}
+          {residentType === 'Inquilino' && (
+            <div className="p-5 bg-amber-50/50 dark:bg-amber-900/10 rounded-3xl border border-amber-100 dark:border-amber-900/20 space-y-4 animate-in slide-in-from-top-2">
+              <h4 className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">Informações do Proprietário</h4>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nome do Proprietário</label>
+                <input
+                  type="text"
+                  value={ownerName}
+                  onChange={(e) => setOwnerName(e.target.value)}
+                  className="w-full h-14 px-4 rounded-2xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-white focus:ring-primary focus:border-primary transition-all font-bold"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Telefone do Proprietário</label>
+                <input
+                  type="text"
+                  value={ownerPhone}
+                  onChange={(e) => setOwnerPhone(formatPhone(e.target.value))}
+                  maxLength={15}
+                  className="w-full h-14 px-4 rounded-2xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-white focus:ring-primary focus:border-primary transition-all font-bold"
+                />
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* Financial Responsible */}
+        <section className="space-y-5">
+          <div className="flex items-center gap-2 text-primary border-b border-primary/10 pb-2">
+            <span className="material-symbols-outlined fill-1">payments</span>
+            <h2 className="font-bold text-slate-800 dark:text-white uppercase text-xs tracking-widest">Responsável Financeiro</h2>
+          </div>
+
+          <div onClick={() => setIsFinancialResponsible(!isFinancialResponsible)} className="flex items-center gap-3 cursor-pointer p-2">
+            <div className={`size-6 rounded-lg border-2 flex items-center justify-center transition-all ${isFinancialResponsible ? 'bg-primary border-primary text-white' : 'border-slate-300'}`}>
+              {isFinancialResponsible && <span className="material-symbols-outlined text-sm font-bold">check</span>}
+            </div>
+            <span className="text-xs font-bold text-slate-700 dark:text-white uppercase tracking-widest">Sou responsável pelo boleto</span>
+          </div>
+
+          {!isFinancialResponsible && (
+            <div className="space-y-4 animate-in slide-in-from-top-2">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nome do Responsável</label>
+                <input
+                  type="text"
+                  value={financialResponsibleName}
+                  onChange={(e) => setFinancialResponsibleName(e.target.value)}
+                  className="w-full h-14 px-4 rounded-2xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-surface-dark text-slate-700 dark:text-white focus:ring-primary focus:border-primary transition-all font-bold"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">CPF do Responsável</label>
+                <input
+                  type="text"
+                  value={financialResponsibleCpf}
+                  onChange={(e) => setFinancialResponsibleCpf(formatCPF(e.target.value))}
+                  maxLength={14}
+                  className="w-full h-14 px-4 rounded-2xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-surface-dark text-slate-700 dark:text-white focus:ring-primary focus:border-primary transition-all font-bold"
+                />
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* Additional Residents */}
+        <section className="space-y-5">
+          <div className="flex items-center justify-between text-primary border-b border-primary/10 pb-2">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined fill-1">group</span>
+              <h2 className="font-bold text-slate-800 dark:text-white uppercase text-xs tracking-widest">Moradores Adicionais</h2>
+            </div>
+            <button type="button" onClick={addResident} className="text-[10px] font-black bg-primary/10 px-3 py-1 rounded-full uppercase tracking-widest hover:bg-primary hover:text-white transition-colors">
+              + Adicionar
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            {additionalResidents.map((res, idx) => (
+              <div key={idx} className="p-4 rounded-3xl bg-slate-50 dark:bg-surface-dark border border-slate-100 dark:border-gray-800 space-y-3 relative">
+                <button
+                  type="button"
+                  onClick={() => removeResident(idx)}
+                  className="absolute top-2 right-2 size-8 bg-red-50 text-red-500 rounded-full flex items-center justify-center hover:bg-red-500 hover:text-white transition-all"
+                >
+                  <span className="material-symbols-outlined text-lg">close</span>
+                </button>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nome</label>
+                  <input
+                    type="text"
+                    value={res.name}
+                    onChange={(e) => updateResident(idx, 'name', e.target.value)}
+                    className="w-full h-12 px-4 rounded-xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-slate-700 dark:text-white focus:ring-primary focus:border-primary transition-all font-bold text-sm"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nascimento</label>
+                    <input
+                      type="date"
+                      value={res.birthDate}
+                      onChange={(e) => updateResident(idx, 'birthDate', e.target.value)}
+                      className="w-full h-12 px-4 rounded-xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-slate-700 dark:text-white focus:ring-primary focus:border-primary transition-all font-bold text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">CPF</label>
+                    <input
+                      type="text"
+                      value={res.cpf}
+                      onChange={(e) => updateResident(idx, 'cpf', e.target.value)}
+                      maxLength={14}
+                      className="w-full h-12 px-4 rounded-xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-slate-700 dark:text-white focus:ring-primary focus:border-primary transition-all font-bold text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+            {additionalResidents.length === 0 && (
+              <div className="text-center py-4 text-slate-400 text-xs font-medium">Nenhum morador adicional</div>
+            )}
           </div>
         </section>
 
@@ -199,10 +496,17 @@ const UnitRegistration: React.FC = () => {
       <div className="fixed bottom-0 left-0 right-0 p-6 pb-12 bg-white/90 dark:bg-background-dark/90 backdrop-blur-xl border-t dark:border-gray-800 max-w-md mx-auto z-30">
         <button
           onClick={handleSubmit}
-          className="w-full h-16 bg-primary text-white rounded-[24px] font-black uppercase tracking-widest flex items-center justify-center gap-3 shadow-2xl shadow-primary/40 active:scale-[0.96] transition-all"
+          disabled={isSaving}
+          className="w-full h-16 bg-primary text-white rounded-[24px] font-black uppercase tracking-widest flex items-center justify-center gap-3 shadow-2xl shadow-primary/40 active:scale-[0.96] transition-all disabled:opacity-70"
         >
-          <span className="material-symbols-outlined">check_circle</span>
-          {isEdit ? 'Atualizar Dados' : 'Concluir Cadastro'}
+          {isSaving ? (
+            <div className="size-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          ) : (
+            <>
+              <span className="material-symbols-outlined">check_circle</span>
+              {isEdit ? 'Salvar Tudo' : 'Concluir Cadastro'}
+            </>
+          )}
         </button>
       </div>
     </div>

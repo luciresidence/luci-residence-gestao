@@ -97,18 +97,8 @@ const ResidentDetails: React.FC = () => {
       <div className="flex-1 overflow-y-auto">
         {/* Profile Header */}
         <div className="flex flex-col items-center pt-8 pb-8 bg-white dark:bg-surface-dark mb-4 border-b dark:border-gray-800">
-          <div className="relative mb-4">
-            <div className="size-24 rounded-full shadow-lg p-0.5 bg-gradient-to-tr from-primary to-blue-400">
-              <img
-                src={apartment.avatarUrl || `https://picsum.photos/seed/${apartment.id}/200`}
-                className="size-full rounded-full object-cover border-2 border-white dark:border-gray-800"
-                alt={apartment.residentName}
-              />
-            </div>
-            {registration && <div className="absolute bottom-1 right-1 size-5 bg-green-500 border-2 border-white dark:border-gray-800 rounded-full" />}
-          </div>
-          <h1 className="text-2xl font-black text-slate-800 dark:text-white tracking-tighter uppercase">{apartment.residentName || 'Unidade Vazia'}</h1>
-          <p className="text-[10px] text-slate-400 font-black uppercase tracking-[3px]">Apt {apartment.number} - Bloco {apartment.block}</p>
+          <h1 className="text-2xl font-black text-slate-800 dark:text-white tracking-tighter uppercase text-center px-4">{apartment.residentName || 'Unidade Vazia'}</h1>
+          <p className="text-[10px] text-slate-400 font-black uppercase tracking-[3px] mt-1">Apt {apartment.number} - Bloco {apartment.block}</p>
           <div className="mt-4 px-4 py-1.5 bg-primary/5 text-primary border border-primary/10 rounded-full text-[9px] font-black uppercase tracking-widest">
             {apartment.residentRole || 'Sem Vínculo'}
           </div>
