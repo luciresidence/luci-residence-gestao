@@ -10,7 +10,28 @@ export const reportService = {
         const sortByUnit = (a: any, b: any) => {
             const apA = apartments.find(ap => ap.id === a.apartment_id);
             const apB = apartments.find(ap => ap.id === b.apartment_id);
-            return (Number(apA?.number) || 0) - (Number(apB?.number) || 0);
+            if (!apA || !apB) return 0;
+
+            const nA = parseInt(apA.number);
+            const nB = parseInt(apB.number);
+            const isNumA = !isNaN(nA);
+            const isNumB = !isNaN(nB);
+
+            // Unidades com texto (ex: COND. AB) sempre primeiro
+            if (!isNumA && isNumB) return -1;
+            if (isNumA && !isNumB) return 1;
+
+            if (!isNumA && !isNumB) {
+                return apA.number.localeCompare(apB.number);
+            }
+
+            // Unidades numéricas: ordenar por bloco (A antes de B)
+            if (apA.block !== apB.block) {
+                return apA.block.localeCompare(apB.block);
+            }
+
+            // Mesmo bloco: ordenar por número
+            return nA - nB;
         };
 
         const waterReadings = data.filter(r => r.type === 'water').sort(sortByUnit);
@@ -95,7 +116,28 @@ export const reportService = {
         const sortByUnit = (a: any, b: any) => {
             const apA = apartments.find(ap => ap.id === a.apartment_id);
             const apB = apartments.find(ap => ap.id === b.apartment_id);
-            return (Number(apA?.number) || 0) - (Number(apB?.number) || 0);
+            if (!apA || !apB) return 0;
+
+            const nA = parseInt(apA.number);
+            const nB = parseInt(apB.number);
+            const isNumA = !isNaN(nA);
+            const isNumB = !isNaN(nB);
+
+            // Unidades com texto (ex: COND. AB) sempre primeiro
+            if (!isNumA && isNumB) return -1;
+            if (isNumA && !isNumB) return 1;
+
+            if (!isNumA && !isNumB) {
+                return apA.number.localeCompare(apB.number);
+            }
+
+            // Unidades numéricas: ordenar por bloco (A antes de B)
+            if (apA.block !== apB.block) {
+                return apA.block.localeCompare(apB.block);
+            }
+
+            // Mesmo bloco: ordenar por número
+            return nA - nB;
         };
 
         const waterReadings = data.filter(r => r.type === 'water').sort(sortByUnit);
