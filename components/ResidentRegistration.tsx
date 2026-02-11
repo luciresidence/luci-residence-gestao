@@ -320,15 +320,9 @@ const ResidentRegistration: React.FC = () => {
                         <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-4xl">check_circle</span>
                     </div>
                     <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Cadastro Enviado!</h2>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed mb-8">
+                    <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
                         Suas informações foram recebidas com sucesso. A administração do condomínio irá revisar os dados em breve.
                     </p>
-                    <button
-                        onClick={() => navigate('/login')}
-                        className="w-full h-14 bg-slate-800 dark:bg-slate-700 text-white rounded-2xl font-bold uppercase tracking-widest text-xs hover:bg-slate-700 transition-all"
-                    >
-                        Voltar ao Início
-                    </button>
                 </div>
             </div>
         );
