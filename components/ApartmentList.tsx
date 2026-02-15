@@ -13,7 +13,11 @@ const ApartmentList: React.FC = () => {
   const [reportType, setReportType] = useState<'mensal' | 'individual'>('mensal');
 
   // Global filter state for current view
-  const [currentReferenceDate, setCurrentReferenceDate] = useState(new Date());
+  const [currentReferenceDate, setCurrentReferenceDate] = useState(() => {
+    const d = new Date();
+    d.setDate(1); // Start at day 1 to be safe from month overflow
+    return d;
+  });
 
   const [individualFilter, setIndividualFilter] = useState({
     aptId: '',
@@ -192,6 +196,7 @@ const ApartmentList: React.FC = () => {
 
   const handleMonthChange = (offset: number) => {
     const newDate = new Date(currentReferenceDate);
+    newDate.setDate(1); // Always set to day 1 to avoid month skipping (e.g. Jan 31 + 1 month -> Mar)
     newDate.setMonth(newDate.getMonth() + offset);
     setCurrentReferenceDate(newDate);
   };
