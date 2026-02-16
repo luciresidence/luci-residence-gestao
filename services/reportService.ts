@@ -37,86 +37,102 @@ export const reportService = {
         const waterReadings = data.filter(r => r.type === 'water').sort(sortByUnit);
         const gasReadings = data.filter(r => r.type === 'gas').sort(sortByUnit);
 
+        const hasWater = waterReadings.length > 0;
+        const hasGas = gasReadings.length > 0;
+
+        if (!hasWater && !hasGas) {
+            alert('Não há dados para gerar o relatório.');
+            return;
+        }
+
         const headerText = `Condomínio Luci Berkembrock referente ao mês ${title}`;
 
-        // Page 1: Water
-        doc.setFontSize(16);
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(0, 0, 0);
-        doc.text(headerText, 14, 20);
+        // --- GERAÇÃO ÁGUA ---
+        if (hasWater) {
+            doc.setFontSize(16);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(0, 0, 0);
+            doc.text(headerText, 14, 20);
 
-        doc.setFontSize(12);
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(0, 102, 204); // Blue for Water
-        doc.text(`Relatório de Consumo - Água`, 14, 32);
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(0, 102, 204); // Blue for Water
+            doc.text(`Relatório de Consumo - Água`, 14, 32);
 
-        const waterTableData = waterReadings.map(r => {
-            const ap = apartments.find(a => a.id === r.apartment_id);
-            const prev = Number(r.previous_value) || 0;
-            const curr = Number(r.current_value) || 0;
-            const consumption = curr - prev;
+            const waterTableData = waterReadings.map(r => {
+                const ap = apartments.find(a => a.id === r.apartment_id);
+                const prev = Number(r.previous_value) || 0;
+                const curr = Number(r.current_value) || 0;
+                const consumption = curr - prev;
 
-            return [
-                ap ? (isNaN(parseInt(ap.number)) ? ap.number : `${ap.number} ${ap.block}`) : '-',
-                ap?.residentName || '-',
-                prev.toFixed(2),
-                curr.toFixed(2),
-                consumption.toFixed(2)
-            ];
-        });
+                return [
+                    ap ? (isNaN(parseInt(ap.number)) ? ap.number : `${ap.number} ${ap.block}`) : '-',
+                    ap?.residentName || '-',
+                    prev.toFixed(2),
+                    curr.toFixed(2),
+                    consumption.toFixed(2)
+                ];
+            });
 
-        (doc as any).autoTable({
-            startY: 40,
-            head: [['UNIDADE', 'MORADOR', 'ANTERIOR', 'ATUAL', 'CONSUMO']],
-            body: waterTableData,
-            theme: 'striped',
-            headStyles: { fillColor: [0, 102, 204] },
-            columnStyles: {
-                0: { fontStyle: 'bold' },
-                4: { fontStyle: 'bold', textColor: [0, 102, 204] }
+            (doc as any).autoTable({
+                startY: 40,
+                head: [['UNIDADE', 'MORADOR', 'ANTERIOR', 'ATUAL', 'CONSUMO']],
+                body: waterTableData,
+                theme: 'striped',
+                headStyles: { fillColor: [0, 102, 204] },
+                columnStyles: {
+                    0: { fontStyle: 'bold' },
+                    4: { fontStyle: 'bold', textColor: [0, 102, 204] }
+                }
+            });
+        }
+
+        // --- GERAÇÃO GÁS ---
+        if (hasGas) {
+            // Se já gerou água, adiciona nova página
+            if (hasWater) {
+                doc.addPage();
             }
-        });
 
-        // Page 2: Gas
-        doc.addPage();
-        doc.setFontSize(16);
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(0, 0, 0);
-        doc.text(headerText, 14, 20);
+            doc.setFontSize(16);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(0, 0, 0);
+            doc.text(headerText, 14, 20);
 
-        doc.setFontSize(12);
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(204, 82, 0); // Orange for Gas
-        doc.text(`Relatório de Consumo - Gás`, 14, 32);
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(204, 82, 0); // Orange for Gas
+            doc.text(`Relatório de Consumo - Gás`, 14, 32);
 
-        const gasTableData = gasReadings.map(r => {
-            const ap = apartments.find(a => a.id === r.apartment_id);
-            const prev = Number(r.previous_value) || 0;
-            const curr = Number(r.current_value) || 0;
-            const consumption = curr - prev;
+            const gasTableData = gasReadings.map(r => {
+                const ap = apartments.find(a => a.id === r.apartment_id);
+                const prev = Number(r.previous_value) || 0;
+                const curr = Number(r.current_value) || 0;
+                const consumption = curr - prev;
 
-            return [
-                ap ? (isNaN(parseInt(ap.number)) ? ap.number : `${ap.number} ${ap.block}`) : '-',
-                ap?.residentName || '-',
-                prev.toFixed(3),
-                curr.toFixed(3),
-                consumption.toFixed(3)
-            ];
-        });
+                return [
+                    ap ? (isNaN(parseInt(ap.number)) ? ap.number : `${ap.number} ${ap.block}`) : '-',
+                    ap?.residentName || '-',
+                    prev.toFixed(3),
+                    curr.toFixed(3),
+                    consumption.toFixed(3)
+                ];
+            });
 
-        (doc as any).autoTable({
-            startY: 40,
-            head: [['UNIDADE', 'MORADOR', 'ANTERIOR', 'ATUAL', 'CONSUMO']],
-            body: gasTableData,
-            theme: 'striped',
-            headStyles: { fillColor: [204, 82, 0] },
-            columnStyles: {
-                0: { fontStyle: 'bold' },
-                4: { fontStyle: 'bold', textColor: [204, 82, 0] }
-            }
-        });
+            (doc as any).autoTable({
+                startY: 40,
+                head: [['UNIDADE', 'MORADOR', 'ANTERIOR', 'ATUAL', 'CONSUMO']],
+                body: gasTableData,
+                theme: 'striped',
+                headStyles: { fillColor: [204, 82, 0] },
+                columnStyles: {
+                    0: { fontStyle: 'bold' },
+                    4: { fontStyle: 'bold', textColor: [204, 82, 0] }
+                }
+            });
+        }
 
-        doc.save(`relatorio_mensal_${new Date().getTime()}.pdf`);
+        doc.save = {`relatorio_mensal_${new Date().getTime()}.pdf`);
     },
 
     generateMonthlyExcel: (data: any[], apartments: any[]) => {
