@@ -30,6 +30,17 @@ const ReadingForm: React.FC = () => {
 
   useEffect(() => {
     if (id) {
+      // Reset states immediately when ID changes
+      setApartment(null);
+      setWaterValue('');
+      setWaterSaved(false);
+      setPrevWater(0);
+      setWaterId(null);
+      setGasValue('');
+      setGasSaved(false);
+      setPrevGas(0);
+      setGasId(null);
+
       const fetchData = async () => {
         // Fetch Apartment Data
         const { data: aptData } = await supabase
