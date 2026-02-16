@@ -300,9 +300,24 @@ const ApartmentList: React.FC = () => {
                   onClick={() => navigate(`/readings/${ap.id}?date=${currentReferenceDate.toISOString()}`)}
                   className="flex items-center gap-3 bg-white dark:bg-surface-dark p-4 rounded-[2rem] border border-white dark:border-gray-800 active:scale-[0.98] transition-all cursor-pointer shadow-sm relative overflow-hidden"
                 >
-                  <div className="size-16 rounded-2xl bg-slate-50 dark:bg-gray-800 flex flex-col items-center justify-center relative border border-slate-100 dark:border-gray-700 flex-shrink-0 shadow-inner">
-                    <span className="font-black text-primary text-lg tracking-tighter leading-none">{ap.number}</span>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Bl {ap.block}</span>
+                  <div className={`size-16 rounded-2xl flex flex-col items-center justify-center relative border flex-shrink-0 shadow-inner ${ap.block === 'B'
+                      ? 'bg-emerald-50/50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800/30'
+                      : ap.block === 'A'
+                        ? 'bg-rose-50/50 dark:bg-rose-900/10 border-rose-100 dark:border-rose-900/20'
+                        : 'bg-slate-50 dark:bg-gray-800 border-slate-100 dark:border-gray-700'
+                    }`}>
+                    <span className={`font-black text-lg tracking-tighter leading-none ${ap.block === 'B'
+                        ? 'text-emerald-800 dark:text-emerald-400'
+                        : ap.block === 'A'
+                          ? 'text-primary dark:text-rose-400'
+                          : 'text-primary'
+                      }`}>{ap.number}</span>
+                    <span className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${ap.block === 'B'
+                        ? 'text-emerald-600/60 dark:text-emerald-500/50'
+                        : ap.block === 'A'
+                          ? 'text-rose-900/60 dark:text-rose-500/50'
+                          : 'text-slate-400'
+                      }`}>Bl {ap.block}</span>
                     {isFullyDone && (
                       <div className="absolute -top-1 -right-1 size-6 bg-green-500 rounded-full flex items-center justify-center border-2 border-white dark:border-surface-dark shadow-sm">
                         <span className="material-symbols-outlined text-[10px] text-white font-black">check</span>

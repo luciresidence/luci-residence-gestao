@@ -86,6 +86,16 @@ export const reportService = {
                 columnStyles: {
                     0: { fontStyle: 'bold' },
                     4: { fontStyle: 'bold', textColor: [0, 102, 204] }
+                },
+                didParseCell: (data) => {
+                    if (data.section === 'body' && data.column.index === 0) {
+                        const text = data.cell.text[0];
+                        if (text.endsWith(' B')) {
+                            data.cell.styles.textColor = [6, 95, 70]; // Dark Green
+                        } else if (text.endsWith(' A')) {
+                            data.cell.styles.textColor = [128, 46, 83]; // Dark Red
+                        }
+                    }
                 }
             });
         }
@@ -131,6 +141,16 @@ export const reportService = {
                 columnStyles: {
                     0: { fontStyle: 'bold' },
                     4: { fontStyle: 'bold', textColor: [204, 82, 0] }
+                },
+                didParseCell: (data) => {
+                    if (data.section === 'body' && data.column.index === 0) {
+                        const text = data.cell.text[0];
+                        if (text.endsWith(' B')) {
+                            data.cell.styles.textColor = [6, 95, 70]; // Dark Green
+                        } else if (text.endsWith(' A')) {
+                            data.cell.styles.textColor = [128, 46, 83]; // Dark Red
+                        }
+                    }
                 }
             });
         }
@@ -267,7 +287,12 @@ export const reportService = {
             head: [['DATA', 'TIPO', 'ANTERIOR', 'ATUAL', 'CONSUMO']],
             body: tableData,
             theme: 'grid',
-            headStyles: { fillColor: [128, 46, 83] }
+            headStyles: { fillColor: [128, 46, 83] },
+            didParseCell: (data) => {
+                // For individual reports, color the title or specific rows if needed
+                // But mostly it's for the unit header which is already handled in text above
+                // To be safe, we can color the header text row if it contains the unit info
+            }
         });
 
         doc.save(`relatorio_apto_${apartment.number}.pdf`);
