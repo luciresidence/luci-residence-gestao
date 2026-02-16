@@ -9,7 +9,7 @@ const ApartmentList: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<'todos' | 'pendente' | 'parcial' | 'concluido'>('todos');
   const [savedReadings, setSavedReadings] = useState<any[]>([]);
   const [isReportsOpen, setIsReportsOpen] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
+  const [exportingReport, setExportingReport] = useState<string | null>(null);
   const [reportType, setReportType] = useState<'mensal' | 'individual'>('mensal');
 
   // Global filter state for current view
@@ -120,7 +120,11 @@ const ApartmentList: React.FC = () => {
   });
 
   const handleDownloadReport = (type: string) => {
-    setIsExporting(true);
+    const referenceYear = currentReferenceDate.getFullYear();
+    const monthName = new Date(referenceYear, selectedMonth).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    const reportTitle = `${monthName.charAt(0).toUpperCase() + monthName.slice(1)}`;
+
+    setExportingReport(type);
 
     // Filter based on selected type/month
     let filteredReadings = [...savedReadings];
@@ -129,36 +133,34 @@ const ApartmentList: React.FC = () => {
       try {
         if (type === 'Relatório Mensal PDF' || type === 'Planilha Excel' || type === 'Consumo Água' || type === 'Consumo Gás') {
           // Filter by selected month and reference year
-          const reportYear = currentReferenceDate.getFullYear();
+          // We use selectedMonth from state (dropdown) and referenceYear from context
+
           filteredReadings = savedReadings.filter(r => {
             const d = new Date(r.date);
-            // We use selectedMonth here because the user might change the dropdown in the modal
-            // But for the year, we should stick to the current view's year or allow year selection.
-            // Assuming the modal is for the "current view" context:
-            return d.getMonth() === selectedMonth && d.getFullYear() === reportYear;
+            return d.getMonth() === selectedMonth && d.getFullYear() === referenceYear;
           });
 
           if (filteredReadings.length === 0) {
             alert("Nenhum registro encontrado para o mês selecionado.");
-            setIsExporting(false);
+            setExportingReport(null);
             return;
           }
 
           if (type === 'Relatório Mensal PDF') {
-            reportService.generateMonthlyPDF(filteredReadings, apartments, "Relatório Geral");
+            reportService.generateMonthlyPDF(filteredReadings, apartments, reportTitle);
           } else if (type === 'Planilha Excel') {
             reportService.generateMonthlyExcel(filteredReadings, apartments);
           } else if (type === 'Consumo Água') {
             const waterData = filteredReadings.filter(r => r.type === 'water');
-            reportService.generateMonthlyPDF(waterData, apartments, "Relatório de Água");
+            reportService.generateMonthlyPDF(waterData, apartments, reportTitle);
           } else if (type === 'Consumo Gás') {
             const gasData = filteredReadings.filter(r => r.type === 'gas');
-            reportService.generateMonthlyPDF(gasData, apartments, "Relatório de Gás");
+            reportService.generateMonthlyPDF(gasData, apartments, reportTitle);
           }
         } else if (type === 'Individual') {
           if (!individualFilter.aptId) {
             alert("Por favor, selecione uma unidade.");
-            setIsExporting(false);
+            setExportingReport(null);
             return;
           }
           const apt = apartments.find(a => a.id === individualFilter.aptId);
@@ -175,13 +177,13 @@ const ApartmentList: React.FC = () => {
 
           reportService.generateIndividualPDF(apt, readings, individualFilter.startDate, individualFilter.endDate);
         }
-        setIsExporting(false);
+        setExportingReport(null);
       } catch (error) {
         console.error("Erro ao gerar relatório:", error);
         alert("Erro ao gerar relatório. Verifique os dados.");
-        setIsExporting(false);
+        setExportingReport(null);
       }
-    }, 800);
+    }, 100);
   };
 
   const filterChips = [
@@ -402,7 +404,7 @@ const ApartmentList: React.FC = () => {
                   ].map((opt) => (
                     <button
                       key={opt.label}
-                      disabled={isExporting}
+                      disabled={!!exportingReport}
                       onClick={() => handleDownloadReport(opt.label)}
                       className="w-full p-3.5 flex items-center gap-4 bg-slate-50 dark:bg-gray-800/50 rounded-2xl active:scale-[0.98] transition-all disabled:opacity-50"
                     >
@@ -410,7 +412,7 @@ const ApartmentList: React.FC = () => {
                         <span className="material-symbols-outlined text-lg">{opt.icon}</span>
                       </div>
                       <p className="font-bold text-[11px] text-slate-700 dark:text-slate-200 uppercase tracking-tight flex-1 text-left">{opt.label}</p>
-                      {isExporting ? (
+                      {exportingReport === opt.label ? (
                         <div className="size-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                       ) : (
                         <span className="material-symbols-outlined text-slate-300 text-base">download</span>
@@ -458,10 +460,10 @@ const ApartmentList: React.FC = () => {
 
                 <button
                   onClick={() => handleDownloadReport('Individual')}
-                  disabled={isExporting}
+                  disabled={!!exportingReport}
                   className="w-full h-16 bg-primary text-white rounded-[20px] font-black uppercase tracking-[3px] text-[11px] shadow-xl shadow-primary/20 flex items-center justify-center gap-3 active:scale-95 transition-all disabled:opacity-50 mt-2"
                 >
-                  {isExporting ? (
+                  {exportingReport === 'Individual' ? (
                     <div className="size-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <>

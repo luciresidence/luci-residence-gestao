@@ -38,12 +38,17 @@ export const reportService = {
         const gasReadings = data.filter(r => r.type === 'gas').sort(sortByUnit);
 
         // Page 1: Water
-        doc.setFontSize(18);
-        doc.setTextColor(0, 102, 204); // Blue for Water
-        doc.text(`Relatório de Consumo - Água`, 14, 20);
+        doc.setFontSize(14);
+        doc.setTextColor(0, 0, 0);
+        doc.text("Condomínio Luci Berkembrock", 14, 15);
+
         doc.setFontSize(10);
         doc.setTextColor(100);
-        doc.text(`Emissão: ${new Date().toLocaleDateString('pt-BR')} • ${title}`, 14, 30);
+        doc.text(`Referência: ${title}`, 14, 22);
+
+        doc.setFontSize(12);
+        doc.setTextColor(0, 102, 204); // Blue for Water
+        doc.text(`Relatório de Consumo - Água`, 14, 32);
 
         const waterTableData = waterReadings.map(r => {
             const ap = apartments.find(a => a.id === r.apartment_id);
@@ -52,7 +57,7 @@ export const reportService = {
             const consumption = curr - prev;
 
             return [
-                ap ? `Apto ${ap.number}` : '-',
+                ap ? (isNaN(parseInt(ap.number)) ? ap.number : `${ap.number} ${ap.block}`) : '-',
                 ap?.residentName || '-',
                 prev.toFixed(2),
                 curr.toFixed(2),
@@ -62,7 +67,7 @@ export const reportService = {
 
         (doc as any).autoTable({
             startY: 40,
-            head: [['Unidade', 'Morador', 'Leitura Ant.', 'Leitura Atual', 'Consumo (m³)']],
+            head: [['UNIDADE', 'MORADOR', 'ANTERIOR', 'ATUAL', 'CONSUMO']],
             body: waterTableData,
             theme: 'striped',
             headStyles: { fillColor: [0, 102, 204] },
@@ -74,12 +79,17 @@ export const reportService = {
 
         // Page 2: Gas
         doc.addPage();
-        doc.setFontSize(18);
-        doc.setTextColor(204, 82, 0); // Orange for Gas
-        doc.text(`Relatório de Consumo - Gás`, 14, 20);
+        doc.setFontSize(14);
+        doc.setTextColor(0, 0, 0);
+        doc.text("Condomínio Luci Berkembrock", 14, 15);
+
         doc.setFontSize(10);
         doc.setTextColor(100);
-        doc.text(`Emissão: ${new Date().toLocaleDateString('pt-BR')} • ${title}`, 14, 30);
+        doc.text(`Referência: ${title}`, 14, 22);
+
+        doc.setFontSize(12);
+        doc.setTextColor(204, 82, 0); // Orange for Gas
+        doc.text(`Relatório de Consumo - Gás`, 14, 32);
 
         const gasTableData = gasReadings.map(r => {
             const ap = apartments.find(a => a.id === r.apartment_id);
@@ -88,7 +98,7 @@ export const reportService = {
             const consumption = curr - prev;
 
             return [
-                ap ? `Apto ${ap.number}` : '-',
+                ap ? (isNaN(parseInt(ap.number)) ? ap.number : `${ap.number} ${ap.block}`) : '-',
                 ap?.residentName || '-',
                 prev.toFixed(3),
                 curr.toFixed(3),
@@ -98,7 +108,7 @@ export const reportService = {
 
         (doc as any).autoTable({
             startY: 40,
-            head: [['Unidade', 'Morador', 'Leitura Ant.', 'Leitura Atual', 'Consumo (m³)']],
+            head: [['UNIDADE', 'MORADOR', 'ANTERIOR', 'ATUAL', 'CONSUMO']],
             body: gasTableData,
             theme: 'striped',
             headStyles: { fillColor: [204, 82, 0] },
@@ -150,12 +160,16 @@ export const reportService = {
                 const curr = Number(r.current_value) || 0;
                 const consumption = curr - prev;
 
+                // Formato exigido: UNIDADE | MORADOR | ANTERIOR | ATUAL | CONSUMO
+                // Unidade deve ser "COND. AB" ou "001 A"
+                const unitLabel = ap ? (isNaN(parseInt(ap.number)) ? ap.number : `${ap.number} ${ap.block}`) : '-';
+
                 return {
-                    'COND.': `${ap?.number} ${ap?.block}`,
-                    'Unidade': ap?.residentName,
-                    'Anterior': prev.toFixed(precision),
-                    'Atual': curr.toFixed(precision),
-                    'Consumo': consumption.toFixed(precision)
+                    'UNIDADE': unitLabel,
+                    'MORADOR': ap?.residentName || '-',
+                    'ANTERIOR': prev.toFixed(precision),
+                    'ATUAL': curr.toFixed(precision),
+                    'CONSUMO': consumption.toFixed(precision).replace('.', ',') // Excel BR usa vírgula
                 };
             });
         };
@@ -163,9 +177,12 @@ export const reportService = {
         const wb = XLSX.utils.book_new();
 
         const wsWater = XLSX.utils.json_to_sheet(formatData(waterReadings, 2));
+        // Ajustar largura das colunas
+        wsWater['!cols'] = [{ wch: 10 }, { wch: 30 }, { wch: 10 }, { wch: 10 }, { wch: 10 }];
         XLSX.utils.book_append_sheet(wb, wsWater, "Consumo Água");
 
         const wsGas = XLSX.utils.json_to_sheet(formatData(gasReadings, 3));
+        wsGas['!cols'] = [{ wch: 10 }, { wch: 30 }, { wch: 10 }, { wch: 10 }, { wch: 10 }];
         XLSX.utils.book_append_sheet(wb, wsGas, "Consumo Gás");
 
         XLSX.writeFile(wb, `relatorio_consumo_${new Date().getTime()}.xlsx`);
@@ -173,12 +190,15 @@ export const reportService = {
 
     generateIndividualPDF: (apartment: any, readings: any[], startDate?: string, endDate?: string) => {
         const doc = new jsPDF();
-        doc.setFontSize(18);
-        doc.text(`Relatório Individual - Apto ${apartment.number}`, 14, 20);
+
+        doc.setFontSize(14);
+        doc.setTextColor(0, 0, 0);
+        doc.text("Condomínio Luci Berkembrock", 14, 15);
 
         doc.setFontSize(12);
-        doc.text(`Morador: ${apartment.residentName}`, 14, 30);
-        doc.text(`Bloco: ${apartment.block}`, 14, 37);
+        doc.setTextColor(100);
+        doc.text(`Relatório Individual - Apto ${apartment.number} ${apartment.block}`, 14, 25);
+        doc.text(`Morador: ${apartment.residentName}`, 14, 32);
 
         if (startDate && endDate) {
             doc.setFontSize(10);
@@ -201,8 +221,8 @@ export const reportService = {
         });
 
         (doc as any).autoTable({
-            startY: 55,
-            head: [['Data', 'Tipo', 'Anterior', 'Atual', 'Consumo']],
+            startY: 45,
+            head: [['DATA', 'TIPO', 'ANTERIOR', 'ATUAL', 'CONSUMO']],
             body: tableData,
             theme: 'grid',
             headStyles: { fillColor: [128, 46, 83] }
