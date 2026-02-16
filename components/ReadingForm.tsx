@@ -146,6 +146,19 @@ const ReadingForm: React.FC = () => {
     }
   };
 
+  const handleDeleteWater = async () => {
+    if (waterId && confirm('Tem certeza que deseja excluir a leitura de ÁGUA atual?')) {
+      const { error } = await supabase.from('readings').delete().eq('id', waterId);
+      if (error) {
+        alert('Erro ao excluir: ' + error.message);
+      } else {
+        setWaterValue('');
+        setWaterId(null);
+        setWaterSaved(false);
+      }
+    }
+  };
+
   const handleSaveGas = async () => {
     if (id && gasValue !== '') {
       const currentVal = parseFloat(gasValue);
@@ -179,6 +192,19 @@ const ReadingForm: React.FC = () => {
     }
   };
 
+  const handleDeleteGas = async () => {
+    if (gasId && confirm('Tem certeza que deseja excluir a leitura de GÁS atual?')) {
+      const { error } = await supabase.from('readings').delete().eq('id', gasId);
+      if (error) {
+        alert('Erro ao excluir: ' + error.message);
+      } else {
+        setGasValue('');
+        setGasId(null);
+        setGasSaved(false);
+      }
+    }
+  };
+
   return (
     <div className="pb-32 pt-safe flex-1 flex flex-col bg-slate-50 dark:bg-background-dark transition-colors duration-200">
       <header className="sticky top-0 z-30 flex items-center bg-white dark:bg-surface-dark p-4 border-b dark:border-gray-800 shadow-sm">
@@ -188,6 +214,11 @@ const ReadingForm: React.FC = () => {
         <div className="flex-1 text-center">
           <h1 className="font-black text-primary uppercase tracking-tighter text-lg italic">Apto {apartment.number}</h1>
           <p className="text-[9px] text-slate-400 font-black uppercase tracking-[2px] -mt-1">Bloco {apartment.block} • {apartment.residentName}</p>
+          <div className="mt-2 bg-slate-100 dark:bg-gray-800 rounded-lg px-3 py-1 inline-block">
+            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-300 uppercase tracking-widest">
+              Referência: {referenceDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+            </span>
+          </div>
         </div>
         <div className="size-10"></div>
       </header>
@@ -208,6 +239,15 @@ const ReadingForm: React.FC = () => {
                 <div className="size-8 bg-green-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-green-500/20">
                   <span className="material-symbols-outlined text-sm font-black">check</span>
                 </div>
+              )}
+              {waterId && (
+                <button
+                  onClick={handleDeleteWater}
+                  className="size-8 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors ml-auto mr-2"
+                  title="Excluir leitura"
+                >
+                  <span className="material-symbols-outlined text-sm font-bold">delete</span>
+                </button>
               )}
             </div>
 
@@ -274,6 +314,15 @@ const ReadingForm: React.FC = () => {
                 <div className="size-8 bg-green-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-green-500/20">
                   <span className="material-symbols-outlined text-sm font-black">check</span>
                 </div>
+              )}
+              {gasId && (
+                <button
+                  onClick={handleDeleteGas}
+                  className="size-8 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors ml-auto mr-2"
+                  title="Excluir leitura"
+                >
+                  <span className="material-symbols-outlined text-sm font-bold">delete</span>
+                </button>
               )}
             </div>
 
