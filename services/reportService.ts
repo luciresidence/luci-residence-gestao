@@ -1,5 +1,5 @@
-import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 
 export const reportService = {
@@ -77,7 +77,7 @@ export const reportService = {
                 ];
             });
 
-            (doc as any).autoTable({
+            autoTable(doc, {
                 startY: 40,
                 head: [['UNIDADE', 'MORADOR', 'ANTERIOR', 'ATUAL', 'CONSUMO']],
                 body: waterTableData,
@@ -122,7 +122,7 @@ export const reportService = {
                 ];
             });
 
-            (doc as any).autoTable({
+            autoTable(doc, {
                 startY: 40,
                 head: [['UNIDADE', 'MORADOR', 'ANTERIOR', 'ATUAL', 'CONSUMO']],
                 body: gasTableData,
@@ -262,7 +262,7 @@ export const reportService = {
             ];
         });
 
-        (doc as any).autoTable({
+        autoTable(doc, {
             startY: 45,
             head: [['DATA', 'TIPO', 'ANTERIOR', 'ATUAL', 'CONSUMO']],
             body: tableData,
