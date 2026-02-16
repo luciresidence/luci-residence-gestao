@@ -37,16 +37,16 @@ export const reportService = {
         const waterReadings = data.filter(r => r.type === 'water').sort(sortByUnit);
         const gasReadings = data.filter(r => r.type === 'gas').sort(sortByUnit);
 
-        // Page 1: Water
-        doc.setFontSize(14);
-        doc.setTextColor(0, 0, 0);
-        doc.text("Condomínio Luci Berkembrock", 14, 15);
+        const headerText = `Condomínio Luci Berkembrock referente ao mês ${title}`;
 
-        doc.setFontSize(10);
-        doc.setTextColor(100);
-        doc.text(`Referência: ${title}`, 14, 22);
+        // Page 1: Water
+        doc.setFontSize(16);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(0, 0, 0);
+        doc.text(headerText, 14, 20);
 
         doc.setFontSize(12);
+        doc.setFont("helvetica", "normal");
         doc.setTextColor(0, 102, 204); // Blue for Water
         doc.text(`Relatório de Consumo - Água`, 14, 32);
 
@@ -79,15 +79,13 @@ export const reportService = {
 
         // Page 2: Gas
         doc.addPage();
-        doc.setFontSize(14);
+        doc.setFontSize(16);
+        doc.setFont("helvetica", "bold");
         doc.setTextColor(0, 0, 0);
-        doc.text("Condomínio Luci Berkembrock", 14, 15);
-
-        doc.setFontSize(10);
-        doc.setTextColor(100);
-        doc.text(`Referência: ${title}`, 14, 22);
+        doc.text(headerText, 14, 20);
 
         doc.setFontSize(12);
+        doc.setFont("helvetica", "normal");
         doc.setTextColor(204, 82, 0); // Orange for Gas
         doc.text(`Relatório de Consumo - Gás`, 14, 32);
 
@@ -174,14 +172,33 @@ export const reportService = {
             });
         };
 
+        // Obter mês/ano do primeiro registro para o título, caso venha vazio, ou usar placeholder
+        let titleSuffix = "";
+        if (data.length > 0) {
+            const d = new Date(data[0].date);
+            const month = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+            titleSuffix = month.charAt(0).toUpperCase() + month.slice(1);
+        }
+        const headerText = `Condomínio Luci Berkembrock referente ao mês ${titleSuffix}`;
+
         const wb = XLSX.utils.book_new();
 
-        const wsWater = XLSX.utils.json_to_sheet(formatData(waterReadings, 2));
+        // Water Sheet
+        // Create sheet with header at A1
+        const wsWater = XLSX.utils.aoa_to_sheet([[headerText]]);
+        // Add data starting at A3
+        XLSX.utils.sheet_add_json(wsWater, formatData(waterReadings, 2), { origin: "A3", skipHeader: false });
+
+        wsWater['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 4 } }];
         // Ajustar largura das colunas
         wsWater['!cols'] = [{ wch: 10 }, { wch: 30 }, { wch: 10 }, { wch: 10 }, { wch: 10 }];
         XLSX.utils.book_append_sheet(wb, wsWater, "Consumo Água");
 
-        const wsGas = XLSX.utils.json_to_sheet(formatData(gasReadings, 3));
+        // Gas Sheet
+        const wsGas = XLSX.utils.aoa_to_sheet([[headerText]]);
+        XLSX.utils.sheet_add_json(wsGas, formatData(gasReadings, 3), { origin: "A3", skipHeader: false });
+
+        wsGas['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 4 } }];
         wsGas['!cols'] = [{ wch: 10 }, { wch: 30 }, { wch: 10 }, { wch: 10 }, { wch: 10 }];
         XLSX.utils.book_append_sheet(wb, wsGas, "Consumo Gás");
 
@@ -191,19 +208,25 @@ export const reportService = {
     generateIndividualPDF: (apartment: any, readings: any[], startDate?: string, endDate?: string) => {
         const doc = new jsPDF();
 
-        doc.setFontSize(14);
+        let subTitle = "";
+        if (startDate && endDate) {
+            subTitle = `referente ao período ${new Date(startDate).toLocaleDateString()} a ${new Date(endDate).toLocaleDateString()}`;
+        } else {
+            const now = new Date();
+            const month = now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+            subTitle = `referente ao mês ${month.charAt(0).toUpperCase() + month.slice(1)}`;
+        }
+
+        doc.setFontSize(16);
+        doc.setFont("helvetica", "bold");
         doc.setTextColor(0, 0, 0);
-        doc.text("Condomínio Luci Berkembrock", 14, 15);
+        doc.text(`Condomínio Luci Berkembrock ${subTitle}`, 14, 20);
 
         doc.setFontSize(12);
+        doc.setFont("helvetica", "normal");
         doc.setTextColor(100);
-        doc.text(`Relatório Individual - Apto ${apartment.number} ${apartment.block}`, 14, 25);
-        doc.text(`Morador: ${apartment.residentName}`, 14, 32);
-
-        if (startDate && endDate) {
-            doc.setFontSize(10);
-            doc.text(`Período: ${new Date(startDate).toLocaleDateString()} a ${new Date(endDate).toLocaleDateString()}`, 14, 45);
-        }
+        doc.text(`Relatório Individual - Apto ${apartment.number} ${apartment.block}`, 14, 32);
+        doc.text(`Morador: ${apartment.residentName}`, 14, 38);
 
         const tableData = readings.map(r => {
             const prev = Number(r.previous_value) || 0;
