@@ -3,6 +3,7 @@ import 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 
 export const reportService = {
+    // Generates the monthly report PDF with Water and Gas pages conditionally
     generateMonthlyPDF: (data: any[], apartments: any[], title: string) => {
         const doc = new jsPDF();
 
@@ -132,7 +133,7 @@ export const reportService = {
             });
         }
 
-        doc.save = {`relatorio_mensal_${new Date().getTime()}.pdf`);
+        doc.save(`relatorio_mensal_${new Date().getTime()}.pdf`);
     },
 
     generateMonthlyExcel: (data: any[], apartments: any[]) => {
