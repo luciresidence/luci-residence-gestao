@@ -310,18 +310,26 @@ const ApartmentList: React.FC = () => {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-start">
-                      <div className="space-y-0.5">
-                        <p className="font-black text-slate-900 dark:text-white uppercase tracking-tighter text-lg leading-tight truncate">{ap.residentName}</p>
-                        <div className="flex items-center gap-2">
-                          <span className="px-2 py-0.5 bg-primary/5 text-primary text-[8px] font-black uppercase tracking-widest rounded-md border border-primary/10">
-                            {ap.residentRole}
-                          </span>
+                    <div className="flex flex-col h-full justify-center">
+                      <p className="font-black text-slate-900 dark:text-white uppercase tracking-tighter text-base leading-tight line-clamp-2 mb-1.5 pr-1">
+                        {ap.residentName}
+                      </p>
+
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="px-2 py-0.5 bg-primary/5 text-primary text-[8px] font-bold uppercase tracking-widest rounded-md border border-primary/10 shrink-0">
+                          {ap.residentRole}
+                        </span>
+
+                        <div className="flex items-center gap-2.5 bg-slate-50/80 dark:bg-gray-800/80 px-2.5 py-1 rounded-full border border-slate-100 dark:border-gray-700/50 shrink-0 shadow-sm">
+                          <div className="flex items-center border-r border-slate-200 dark:border-gray-700 pr-2 gap-1">
+                            <span className={`material-symbols-outlined text-[15px] ${hasWater ? 'text-blue-500 fill-1' : 'text-slate-300 dark:text-gray-600'}`}>water_drop</span>
+                            <span className={`text-[7px] font-black ${hasWater ? 'text-blue-600' : 'text-slate-400'}`}>ÁGUA</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className={`material-symbols-outlined text-[15px] ${hasGas ? 'text-orange-500 fill-1' : 'text-slate-300 dark:text-gray-600'}`}>local_fire_department</span>
+                            <span className={`text-[7px] font-black ${hasGas ? 'text-orange-600' : 'text-slate-400'}`}>GÁS</span>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex gap-2 shrink-0 pt-1">
-                        <span className={`material-symbols-outlined text-[20px] ${hasWater ? 'text-blue-500 fill-1' : 'text-slate-100 dark:text-gray-800'}`}>water_drop</span>
-                        <span className={`material-symbols-outlined text-[20px] ${hasGas ? 'text-orange-500 fill-1' : 'text-slate-100 dark:text-gray-800'}`}>local_fire_department</span>
                       </div>
                     </div>
                   </div>
