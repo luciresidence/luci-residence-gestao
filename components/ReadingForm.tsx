@@ -13,6 +13,8 @@ const ReadingForm: React.FC = () => {
   const referenceDate = dateParam ? new Date(dateParam) : new Date();
 
   const [apartment, setApartment] = useState<Apartment | null>(null);
+  const [allApartments, setAllApartments] = useState<any[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(-1);
 
   // States for Water
   const [waterValue, setWaterValue] = useState('');
@@ -43,6 +45,28 @@ const ReadingForm: React.FC = () => {
             residentRole: aptData.resident_role,
             avatarUrl: aptData.avatar_url
           });
+        }
+
+        // Fetch ALL apartments for navigation
+        const { data: allApts } = await supabase.from('apartments').select('id, number, block, resident_name').order('number');
+        if (allApts) {
+          // Reuse sorting logic from ApartmentList to ensure consistency
+          const sortedApts = allApts.sort((a, b) => {
+            const numA = parseInt(a.number);
+            const numB = parseInt(b.number);
+            const isNumericA = !isNaN(numA);
+            const isNumericB = !isNaN(numB);
+
+            if (!isNumericA && isNumericB) return -1;
+            if (isNumericA && !isNumericB) return 1;
+            if (!isNumericA && !isNumericB) return a.number.localeCompare(b.number);
+            if (a.block !== b.block) return a.block.localeCompare(b.block);
+            return numA - numB;
+          });
+
+          setAllApartments(sortedApts);
+          const idx = sortedApts.findIndex(a => a.id === id);
+          setCurrentIndex(idx);
         }
 
         // Fetch current month readings (drafts/saved)
@@ -211,9 +235,57 @@ const ReadingForm: React.FC = () => {
         <button onClick={() => navigate(-1)} className="size-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-gray-800 text-primary transition-colors">
           <span className="material-symbols-outlined font-bold">arrow_back_ios</span>
         </button>
-        <div className="flex-1 text-center">
-          <h1 className="font-black text-primary uppercase tracking-tighter text-lg italic">Apto {apartment.number}</h1>
-          <p className="text-[9px] text-slate-400 font-black uppercase tracking-[2px] -mt-1">Bloco {apartment.block} • {apartment.residentName}</p>
+        <div className="flex-1 text-center min-w-0 px-2">
+          {/* Quick Navigation Header */}
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <button
+              onClick={() => {
+                if (currentIndex > 0) {
+                  const prevId = allApartments[currentIndex - 1].id;
+                  navigate(`/readings/${prevId}?date=${referenceDate.toISOString()}`, { replace: true });
+                }
+              }}
+              disabled={currentIndex <= 0}
+              className="size-8 rounded-full bg-slate-100 dark:bg-gray-800 flex items-center justify-center text-primary disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition-all"
+            >
+              <span className="material-symbols-outlined text-sm font-bold">arrow_back</span>
+            </button>
+
+            <div className="relative max-w-[200px]">
+              <select
+                value={id}
+                onChange={(e) => {
+                  navigate(`/readings/${e.target.value}?date=${referenceDate.toISOString()}`, { replace: true });
+                }}
+                className="appearance-none bg-transparent font-black text-primary uppercase tracking-tighter text-lg italic text-center w-full focus:outline-none cursor-pointer truncate pr-4"
+              >
+                {allApartments.map(apt => (
+                  <option key={apt.id} value={apt.id}>
+                    Apto {apt.number} {apt.block ? `- Bl ${apt.block}` : ''}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-primary">
+                <span className="material-symbols-outlined text-[10px]">expand_more</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                if (currentIndex < allApartments.length - 1) {
+                  const nextId = allApartments[currentIndex + 1].id;
+                  navigate(`/readings/${nextId}?date=${referenceDate.toISOString()}`, { replace: true });
+                }
+              }}
+              disabled={currentIndex === -1 || currentIndex >= allApartments.length - 1}
+              className="size-8 rounded-full bg-slate-100 dark:bg-gray-800 flex items-center justify-center text-primary disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition-all"
+            >
+              <span className="material-symbols-outlined text-sm font-bold">arrow_forward</span>
+            </button>
+          </div>
+
+          <p className="text-[9px] text-slate-400 font-black uppercase tracking-[2px] truncate">{apartment.residentName}</p>
+
           <div className="mt-2 bg-slate-100 dark:bg-gray-800 rounded-lg px-3 py-1 inline-block">
             <span className="text-[10px] font-bold text-slate-500 dark:text-slate-300 uppercase tracking-widest">
               Referência: {referenceDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
