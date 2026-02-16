@@ -114,7 +114,7 @@ const ReadingForm: React.FC = () => {
   if (!apartment) return <div className="p-10 text-center text-slate-500 font-bold">Unidade não encontrada.</div>;
 
   const handleSaveWater = async () => {
-    if (id && waterValue) {
+    if (id && waterValue !== '') {
       const currentVal = parseFloat(waterValue);
       if (currentVal < prevWater) {
         if (!confirm(`Atenção: A leitura atual (${waterValue}) é menor que a anterior (${prevWater}). Deseja salvar mesmo assim?`)) {
@@ -147,7 +147,7 @@ const ReadingForm: React.FC = () => {
   };
 
   const handleSaveGas = async () => {
-    if (id && gasValue) {
+    if (id && gasValue !== '') {
       const currentVal = parseFloat(gasValue);
       if (currentVal < prevGas) {
         if (!confirm(`Atenção: A leitura atual (${gasValue}) é menor que a anterior (${prevGas}). Deseja salvar mesmo assim?`)) {
@@ -247,7 +247,7 @@ const ReadingForm: React.FC = () => {
 
               <button
                 onClick={handleSaveWater}
-                disabled={!waterValue || (waterSaved && !waterValue)}
+                disabled={waterValue === '' || (waterSaved && !waterValue)}
                 className={`w-full h-16 rounded-[24px] font-black uppercase tracking-[3px] text-xs shadow-xl transition-all flex items-center justify-center gap-3 ${waterSaved ? 'bg-green-500 text-white shadow-green-500/30' : 'bg-primary/20 text-primary border border-primary/10'
                   } disabled:opacity-30 active:scale-95`}
               >
@@ -313,7 +313,7 @@ const ReadingForm: React.FC = () => {
 
               <button
                 onClick={handleSaveGas}
-                disabled={!gasValue || (gasSaved && !gasValue)}
+                disabled={gasValue === '' || (gasSaved && !gasValue)}
                 className={`w-full h-16 rounded-[24px] font-black uppercase tracking-[3px] text-xs shadow-xl transition-all flex items-center justify-center gap-3 ${gasSaved ? 'bg-green-500 text-white shadow-green-500/30' : 'bg-orange-600/20 text-orange-600 border border-orange-600/10'
                   } disabled:opacity-30 active:scale-95`}
               >
