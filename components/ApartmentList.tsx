@@ -180,7 +180,8 @@ const ApartmentList: React.FC = () => {
         setExportingReport(null);
       } catch (error) {
         console.error("Erro ao gerar relatório:", error);
-        alert("Erro ao gerar relatório. Verifique os dados.");
+        const msg = error instanceof Error ? error.message : String(error);
+        alert(`Erro detalhado: ${msg}`);
         setExportingReport(null);
       }
     }, 100);
