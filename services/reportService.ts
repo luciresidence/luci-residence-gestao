@@ -13,8 +13,10 @@ export const reportService = {
             const apB = apartments.find(ap => ap.id === b.apartment_id);
             if (!apA || !apB) return 0;
 
-            const nA = parseInt(apA.number);
-            const nB = parseInt(apB.number);
+            const valA = apA.number || '';
+            const valB = apB.number || '';
+            const nA = parseInt(valA);
+            const nB = parseInt(valB);
             const isNumA = !isNaN(nA);
             const isNumB = !isNaN(nB);
 
@@ -23,12 +25,12 @@ export const reportService = {
             if (isNumA && !isNumB) return 1;
 
             if (!isNumA && !isNumB) {
-                return apA.number.localeCompare(apB.number);
+                return String(valA).localeCompare(String(valB));
             }
 
             // Unidades numéricas: ordenar por bloco (A antes de B)
             if (apA.block !== apB.block) {
-                return apA.block.localeCompare(apB.block);
+                return (apA.block || '').localeCompare(apB.block || '');
             }
 
             // Mesmo bloco: ordenar por número
