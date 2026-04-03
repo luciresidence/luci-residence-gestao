@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { apiFetch } from '../lib/api';
+import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 
 interface Apartment {
@@ -45,16 +45,17 @@ const ResidentRegistration: React.FC = () => {
 
     const fetchApartments = async () => {
         setIsLoading(true);
-        try {
-            const url = `https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?select=id,number,block&order=number`;
-            const res = await apiFetch(url);
-            const data = await res.json();
+        const { data, error } = await supabase
+            .from('apartments')
+            .select('id, number, block')
+            .order('number');
+
+        if (error) {
+            setErrors(prev => ({ ...prev, general: 'Erro ao carregar unidades.' }));
+        } else {
             setApartments(data || []);
-        } catch (e) {
-            setErrors(prev => ({ ...prev, general: 'Erro de conexão ao carregar unidades.' }));
-        } finally {
-            setIsLoading(false);
         }
+        setIsLoading(false);
     };
 
     const handleAddResident = () => {
@@ -273,13 +274,20 @@ const ResidentRegistration: React.FC = () => {
     };
 
     const handleSubmit = async () => {
-        if (step !== 3) return;
+        // Only allow submission on step 3
+        if (step !== 3) {
+            return;
+        }
+
         setErrors({});
+
         if (!validateStepData(step)) return;
 
         setIsSubmitting(true);
-        try {
-            const payload = {
+
+        const { error: submitError } = await supabase
+            .from('resident_registrations')
+            .insert([{
                 apartment_id: selectedApartment,
                 full_name: fullName,
                 cpf: cpf.replace(/[^\d]/g, ''),
@@ -294,20 +302,14 @@ const ResidentRegistration: React.FC = () => {
                 owner_phone: residentType === 'Inquilino' ? ownerPhone.replace(/[^\d]/g, '') : null,
                 additional_residents: additionalResidents,
                 status: 'PENDENTE'
-            };
+            }]);
 
-            const res = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/resident_registrations`, {
-                method: 'POST',
-                body: JSON.stringify(payload)
-            });
-
-            if (res.ok) setSuccess(true);
-            else setErrors(prev => ({ ...prev, general: 'Erro ao enviar cadastro. Tente novamente.' }));
-        } catch (e) {
-            setErrors(prev => ({ ...prev, general: 'Erro de conexão ao enviar cadastro.' }));
-        } finally {
-            setIsSubmitting(false);
+        if (submitError) {
+            setErrors(prev => ({ ...prev, general: 'Erro ao enviar: ' + submitError.message }));
+        } else {
+            setSuccess(true);
         }
+        setIsSubmitting(false);
     };
 
     if (success) {

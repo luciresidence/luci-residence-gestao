@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { apiFetch } from '../lib/api';
 
 interface Registration {
     id: string;
@@ -9,15 +8,14 @@ interface Registration {
     cpf: string;
     birth_date: string;
     phone: string;
-    email: string;
     resident_type: string;
     garage_spot: string;
     is_financial_responsible: boolean;
-    financial_responsible_name?: string;
-    financial_responsible_cpf?: string;
-    owner_name?: string;
-    owner_phone?: string;
-    additional_residents?: any[];
+    financial_responsible_name: string;
+    financial_responsible_cpf: string;
+    owner_name: string;
+    owner_phone: string;
+    additional_residents: any[];
     status: string;
     created_at: string;
     apartments: {
@@ -52,13 +50,13 @@ const RegistrationManager: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        if (selectedReg) {
+        if (selectedReg && isEditing) {
             setEditFullName(selectedReg.full_name);
             setEditCpf(selectedReg.cpf);
             setEditBirthDate(selectedReg.birth_date);
             setEditPhone(selectedReg.phone);
             setEditResidentType(selectedReg.resident_type);
-            setEditGarageSpot(selectedReg.garage_spot || '');
+            setEditGarageSpot(selectedReg.garage_spot);
             setEditIsFinancialResponsible(selectedReg.is_financial_responsible);
             setEditFinancialResponsibleName(selectedReg.financial_responsible_name || '');
             setEditFinancialResponsibleCpf(selectedReg.financial_responsible_cpf || '');
@@ -66,36 +64,34 @@ const RegistrationManager: React.FC = () => {
             setEditOwnerPhone(selectedReg.owner_phone || '');
             setEditAdditionalResidents(selectedReg.additional_residents || []);
         }
-    }, [selectedReg]);
+    }, [selectedReg, isEditing]);
 
     const fetchRegistrations = async () => {
         setIsLoading(true);
-        try {
-            const url = `https://blixowofssbimudbrejm.supabase.co/rest/v1/resident_registrations?select=*,apartments(number,block)&status=eq.PENDENTE&order=created_at.desc`;
-            const res = await apiFetch(url);
-            const data = await res.json();
+        const { data, error } = await supabase
+            .from('resident_registrations')
+            .select('*, apartments(number, block)')
+            .eq('status', 'PENDENTE')
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('Error fetching registrations:', error);
+        } else {
             setRegistrations(data || []);
-        } catch (e) {
-            console.error("Erro ao buscar cadastros:", e);
-        } finally {
-            setIsLoading(false);
         }
+        setIsLoading(false);
     };
 
     const handleUpdateStatus = async (id: string, status: string) => {
-        try {
-            const res = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/resident_registrations?id=eq.${id}`, {
-                method: 'PATCH',
-                body: JSON.stringify({ status })
-            });
+        const { error } = await supabase
+            .from('resident_registrations')
+            .update({ status })
+            .eq('id', id);
 
-            if (res.ok) {
-                fetchRegistrations();
-                setSelectedReg(null);
-                setIsEditing(false);
-            }
-        } catch (e) {
-            console.error("Erro ao atualizar status:", e);
+        if (!error) {
+            fetchRegistrations();
+            setSelectedReg(null);
+            setIsEditing(false);
         }
     };
 
@@ -103,9 +99,9 @@ const RegistrationManager: React.FC = () => {
         if (!selectedReg) return;
 
         setIsSaving(true);
-        try {
-            const supabaseKey = (supabase as any).supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsaXhvd29mc3NiaW11ZGJyZWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NzcyNjksImV4cCI6MjA4NDM1MzI2OX0.28TcTxfnLUFr-CJ-4C7sTVSyrd_jDVkaf46qEIl4Sbo';
-            const payload = {
+        const { error } = await supabase
+            .from('resident_registrations')
+            .update({
                 full_name: editFullName,
                 cpf: editCpf,
                 birth_date: editBirthDate,
@@ -118,41 +114,45 @@ const RegistrationManager: React.FC = () => {
                 owner_name: editResidentType === 'Inquilino' ? editOwnerName : null,
                 owner_phone: editResidentType === 'Inquilino' ? editOwnerPhone.replace(/\D/g, '') : null,
                 additional_residents: editAdditionalResidents
-            };
+            })
+            .eq('id', selectedReg.id);
 
-            const res = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/resident_registrations?id=eq.${selectedReg.id}`, {
-                method: 'PATCH',
-                body: JSON.stringify(payload)
-            });
-
-            if (res.ok) {
-                const updatedReg = { ...selectedReg, ...payload } as Registration;
-                setSelectedReg(updatedReg);
-                setIsEditing(false);
-                fetchRegistrations();
-            }
-        } catch (e) {
-            console.error('Error saving edits:', e);
-        } finally {
-            setIsSaving(false);
+        if (!error) {
+            // Update local state
+            const updatedReg = {
+                ...selectedReg,
+                full_name: editFullName,
+                cpf: editCpf,
+                birth_date: editBirthDate,
+                phone: editPhone,
+                resident_type: editResidentType,
+                garage_spot: editGarageSpot,
+                is_financial_responsible: editIsFinancialResponsible,
+                financial_responsible_name: editIsFinancialResponsible ? null : editFinancialResponsibleName,
+                financial_responsible_cpf: editIsFinancialResponsible ? null : editFinancialResponsibleCpf.replace(/\D/g, ''),
+                owner_name: editResidentType === 'Inquilino' ? editOwnerName : null,
+                owner_phone: editResidentType === 'Inquilino' ? editOwnerPhone.replace(/\D/g, '') : null,
+                additional_residents: editAdditionalResidents
+            } as Registration;
+            setSelectedReg(updatedReg);
+            setIsEditing(false);
+            fetchRegistrations();
         }
+        setIsSaving(false);
     };
 
     const handleApplyToUnit = async (reg: Registration) => {
-        try {
-            const res = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?id=eq.${reg.apartment_id}`, {
-                method: 'PATCH',
-                body: JSON.stringify({
-                    resident_name: reg.full_name,
-                    resident_role: reg.resident_type
-                })
-            });
+        // Update the core apartments table with the primary resident name
+        const { error } = await supabase
+            .from('apartments')
+            .update({
+                resident_name: reg.full_name,
+                resident_role: reg.resident_type
+            })
+            .eq('id', reg.apartment_id);
 
-            if (res.ok) {
-                handleUpdateStatus(reg.id, 'APROVADO');
-            }
-        } catch (e) {
-            console.error('Error applying to unit:', e);
+        if (!error) {
+            handleUpdateStatus(reg.id, 'APROVADO');
         }
     };
 
@@ -166,20 +166,17 @@ const RegistrationManager: React.FC = () => {
             return;
         }
 
-        try {
-            const res = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/resident_registrations?id=eq.${id}`, {
-                method: 'DELETE'
-            });
+        const { error } = await supabase
+            .from('resident_registrations')
+            .delete()
+            .eq('id', id);
 
-            if (res.ok) {
-                fetchRegistrations();
-                setSelectedReg(null);
-                setIsEditing(false);
-            } else {
-                alert('Erro ao excluir o formulário. Tente novamente.');
-            }
-        } catch (e) {
-            console.error('Error deleting registration:', e);
+        if (!error) {
+            fetchRegistrations();
+            setSelectedReg(null);
+            setIsEditing(false);
+        } else {
+            alert('Erro ao excluir o formulário. Tente novamente.');
         }
     };
 

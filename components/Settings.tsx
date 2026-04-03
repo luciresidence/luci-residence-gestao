@@ -29,16 +29,7 @@ const Settings: React.FC<SettingsProps> = ({ toggleDarkMode, isDarkMode, onLogou
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user: sbUser } }) => {
       if (sbUser) {
-        const metadata = sbUser.user_metadata || {};
-        const mergedUser = {
-          name: metadata.name || sbUser.email?.split('@')[0] || user.name,
-          role: metadata.role || 'Administrador',
-          condo: metadata.condo || user.condo,
-          avatarUrl: metadata.avatarUrl || user.avatarUrl
-        };
-        setUser(mergedUser);
-        setEditUser(mergedUser);
-        storage.saveUserProfile(mergedUser);
+        setUser(prev => ({ ...prev, name: sbUser.email?.split('@')[0] || prev.name, role: 'Administrador' }));
       }
     });
   }, []);
@@ -52,38 +43,22 @@ const Settings: React.FC<SettingsProps> = ({ toggleDarkMode, isDarkMode, onLogou
     setTimeout(() => setMsg(null), 2000);
   };
 
-  const handleSaveProfile = async (e: React.FormEvent) => {
+  const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
     storage.saveUserProfile(editUser);
     setUser(editUser);
-    
-    // BACKEND SYNC
-    await supabase.auth.updateUser({
-      data: {
-        name: editUser.name,
-        role: editUser.role,
-        condo: editUser.condo,
-        avatarUrl: editUser.avatarUrl
-      }
-    });
-
     showMessage('Perfil atualizado com sucesso!');
     setTimeout(() => setView('main'), 1000);
   };
 
-  const handleChangePassword = async (e: React.FormEvent) => {
+  const handleChangePassword = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!passwords.new) {
+    if (!passwords.current || !passwords.new) {
       showMessage('Preencha os campos obrigatórios', 'error');
       return;
     }
     if (passwords.new !== passwords.confirm) {
       showMessage('As senhas não coincidem!', 'error');
-      return;
-    }
-    const { error } = await supabase.auth.updateUser({ password: passwords.new });
-    if (error) {
-      showMessage(error.message, 'error');
       return;
     }
     showMessage('Senha alterada com sucesso!');
@@ -95,13 +70,12 @@ const Settings: React.FC<SettingsProps> = ({ toggleDarkMode, isDarkMode, onLogou
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = async () => {
+      reader.onloadend = () => {
         const newAvatar = reader.result as string;
         const newUser = { ...user, avatarUrl: newAvatar };
         storage.saveUserProfile(newUser);
         setUser(newUser);
         setEditUser(newUser);
-        await supabase.auth.updateUser({ data: { avatarUrl: newAvatar } });
         showMessage('Foto atualizada!');
       };
       reader.readAsDataURL(file);

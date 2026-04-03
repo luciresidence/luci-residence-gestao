@@ -1,6 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { apiFetch } from '../lib/api';
+import { supabase } from '../lib/supabase';
+import { storage } from '../data';
 import { Apartment } from '../types';
 
 const ResidentDetails: React.FC = () => {
@@ -14,33 +16,36 @@ const ResidentDetails: React.FC = () => {
     if (id) {
       const fetchData = async () => {
         setIsLoading(true);
-        try {
-          // 1. Fetch Apartment basic info
-          const aptRes = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?id=eq.${id}&select=*`);
-          const aptData = await aptRes.json();
+        // Fetch Apartment basic info
+        const { data: aptData } = await supabase
+          .from('apartments')
+          .select('*')
+          .eq('id', id)
+          .single();
 
-          if (aptData && aptData.length > 0) {
-            const apt = aptData[0];
-            setApartment({
-              ...apt,
-              residentName: apt.resident_name,
-              residentRole: apt.resident_role,
-              avatarUrl: apt.avatar_url
-            });
-          }
-
-          // 2. Fetch latest approved registration
-          const regRes = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/resident_registrations?apartment_id=eq.${id}&status=eq.APROVADO&order=created_at.desc&limit=1&select=*`);
-          const regData = await regRes.json();
-
-          if (regData && regData.length > 0) {
-            setRegistration(regData[0]);
-          }
-        } catch (e) {
-          console.error("ResidentDetails: Erro ao carregar", e);
-        } finally {
-          setIsLoading(false);
+        if (aptData) {
+          setApartment({
+            ...aptData,
+            residentName: aptData.resident_name,
+            residentRole: aptData.resident_role,
+            avatarUrl: aptData.avatar_url
+          });
         }
+
+        // Fetch latest approved registration for this apartment
+        const { data: regData } = await supabase
+          .from('resident_registrations')
+          .select('*')
+          .eq('apartment_id', id)
+          .eq('status', 'APROVADO')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (regData) {
+          setRegistration(regData);
+        }
+        setIsLoading(false);
       };
       fetchData();
     }

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { apiFetch } from '../lib/api';
 import { reportService } from '../services/reportService';
 
 const ApartmentList: React.FC = () => {
@@ -12,8 +11,6 @@ const ApartmentList: React.FC = () => {
   const [isReportsOpen, setIsReportsOpen] = useState(false);
   const [exportingReport, setExportingReport] = useState<string | null>(null);
   const [reportType, setReportType] = useState<'mensal' | 'individual'>('mensal');
-  const [error, setError] = useState<string | null>(null);
-  const [isRetrying, setIsRetrying] = useState(false);
 
   // Global filter state for current view
   const [currentReferenceDate, setCurrentReferenceDate] = useState(() => {
@@ -41,55 +38,48 @@ const ApartmentList: React.FC = () => {
 
   const fetchData = async () => {
     setIsLoading(true);
-    setError(null);
-    console.log("Iniciando busca de dados (Medições)...");
-    
-    try {
-      const aptsUrl = `https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?select=*&order=number`;
-      const readsUrl = `https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?select=*`;
+    const { data: apts } = await supabase.from('apartments').select('*').order('number');
+    const { data: reads } = await supabase.from('readings').select('*');
 
-      const [aptsRes, readsRes] = await Promise.all([
-        apiFetch(aptsUrl),
-        apiFetch(readsUrl)
-      ]);
+    if (apts) {
+      const mappedApts = apts.map(apt => ({
+        ...apt,
+        residentName: apt.resident_name,
+        residentRole: apt.resident_role,
+        avatarUrl: apt.avatar_url
+      }));
 
-      if (!aptsRes.ok) throw new Error("Erro ao buscar unidades");
-      
-      const apts = await aptsRes.json();
-      let reads = [];
-      if (readsRes.ok) {
-        reads = await readsRes.json();
-      }
+      // Ordenação customizada: Unidades com texto primeiro, depois Bloco A, depois Bloco B
+      const sortedApts = mappedApts.sort((a, b) => {
+        const numA = parseInt(a.number);
+        const numB = parseInt(b.number);
+        const isNumericA = !isNaN(numA);
+        const isNumericB = !isNaN(numB);
 
-      if (apts) {
-        const mappedApts = apts.map((apt: any) => ({
-          ...apt,
-          residentName: apt.resident_name || '',
-          residentRole: apt.resident_role || 'Residente',
-          avatarUrl: apt.avatar_url
-        }));
+        // Unidades com texto (não numéricos) sempre primeiro
+        if (!isNumericA && isNumericB) return -1;
+        if (isNumericA && !isNumericB) return 1;
 
-        const sortedApts = mappedApts.sort((a: any, b: any) => {
-          const numA = parseInt(a.number);
-          const numB = parseInt(b.number);
-          if (isNaN(numA) && !isNaN(numB)) return -1;
-          if (!isNaN(numA) && isNaN(numB)) return 1;
-          if (isNaN(numA) && isNaN(numB)) return (a.number || '').localeCompare(b.number || '');
-          if (a.block !== b.block) return (a.block || '').localeCompare(b.block || '');
-          return numA - numB;
-        });
+        // Se ambos são texto, ordenar alfabeticamente
+        if (!isNumericA && !isNumericB) {
+          return a.number.localeCompare(b.number);
+        }
 
-        setApartments(sortedApts);
-      }
+        // Se ambos são numéricos, separar por bloco
+        if (a.block !== b.block) {
+          // Bloco A antes do Bloco B
+          return a.block.localeCompare(b.block);
+        }
 
-      setSavedReadings(reads);
-    } catch (err: any) {
-      console.error("Erro no fetchData:", err);
-      setError(`Erro de conexão: ${err.message || 'Verifique sua conexão'}`);
-    } finally {
-      setIsLoading(false);
-      setIsRetrying(false);
+        // Dentro do mesmo bloco, ordenar por número
+        return numA - numB;
+      });
+
+      setApartments(sortedApts);
     }
+
+    if (reads) setSavedReadings(reads);
+    setIsLoading(false);
   };
 
   useEffect(() => {
@@ -120,9 +110,7 @@ const ApartmentList: React.FC = () => {
   };
 
   const filteredApartments = apartments.filter(ap => {
-    const name = ap.residentName || '';
-    const num = ap.number || '';
-    const matchesSearch = num.includes(searchTerm) || name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = ap.number.includes(searchTerm) || ap.residentName.toLowerCase().includes(searchTerm.toLowerCase());
     const status = getAptStatus(ap.id);
 
     if (filterStatus === 'pendente') return matchesSearch && status.isPending;
@@ -298,41 +286,10 @@ const ApartmentList: React.FC = () => {
         </header>
 
         <div className="p-4 space-y-3">
-          {error ? (
-            <div className="py-20 text-center space-y-6 px-6">
-              <div className="size-20 bg-rose-50 dark:bg-rose-900/10 rounded-full flex items-center justify-center mx-auto text-primary">
-                <span className="material-symbols-outlined text-4xl">cloud_off</span>
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-tighter">Erro de Conexão</p>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
-                  {error}
-                </p>
-              </div>
-              <button 
-                onClick={() => {
-                  setIsRetrying(true);
-                  fetchData();
-                }}
-                disabled={isRetrying}
-                className="w-full h-12 bg-primary text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-primary/20 active:scale-95 transition-all flex items-center justify-center gap-2"
-              >
-                {isRetrying ? (
-                  <div className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined text-base">refresh</span>
-                    Tentar Novamente
-                  </>
-                )}
-              </button>
-            </div>
-          ) : filteredApartments.length === 0 ? (
+          {filteredApartments.length === 0 ? (
             <div className="py-20 text-center space-y-4">
               <span className="material-symbols-outlined text-5xl text-slate-200">domain_disabled</span>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                {searchTerm ? 'Nenhuma unidade encontrada para esta busca' : 'Nenhuma unidade encontrada'}
-              </p>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Nenhuma unidade encontrada</p>
             </div>
           ) : (
             filteredApartments.map(ap => {
@@ -343,24 +300,9 @@ const ApartmentList: React.FC = () => {
                   onClick={() => navigate(`/readings/${ap.id}?date=${currentReferenceDate.toISOString()}`)}
                   className="flex items-center gap-3 bg-white dark:bg-surface-dark p-4 rounded-[2rem] border border-white dark:border-gray-800 active:scale-[0.98] transition-all cursor-pointer shadow-sm relative overflow-hidden"
                 >
-                  <div className={`size-16 rounded-2xl flex flex-col items-center justify-center relative border flex-shrink-0 shadow-inner ${ap.block === 'B'
-                      ? 'bg-emerald-50/50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800/30'
-                      : ap.block === 'A'
-                        ? 'bg-rose-50/50 dark:bg-rose-900/10 border-rose-100 dark:border-rose-900/20'
-                        : 'bg-slate-50 dark:bg-gray-800 border-slate-100 dark:border-gray-700'
-                    }`}>
-                    <span className={`font-black text-lg tracking-tighter leading-none ${ap.block === 'B'
-                        ? 'text-emerald-800 dark:text-emerald-400'
-                        : ap.block === 'A'
-                          ? 'text-primary dark:text-rose-400'
-                          : 'text-primary'
-                      }`}>{ap.number}</span>
-                    <span className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${ap.block === 'B'
-                        ? 'text-emerald-600/60 dark:text-emerald-500/50'
-                        : ap.block === 'A'
-                          ? 'text-rose-900/60 dark:text-rose-500/50'
-                          : 'text-slate-400'
-                      }`}>Bl {ap.block}</span>
+                  <div className="size-16 rounded-2xl bg-slate-50 dark:bg-gray-800 flex flex-col items-center justify-center relative border border-slate-100 dark:border-gray-700 flex-shrink-0 shadow-inner">
+                    <span className="font-black text-primary text-lg tracking-tighter leading-none">{ap.number}</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Bl {ap.block}</span>
                     {isFullyDone && (
                       <div className="absolute -top-1 -right-1 size-6 bg-green-500 rounded-full flex items-center justify-center border-2 border-white dark:border-surface-dark shadow-sm">
                         <span className="material-symbols-outlined text-[10px] text-white font-black">check</span>

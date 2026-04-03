@@ -16,7 +16,6 @@ const Logo = () => (
 );
 
 import { supabase } from '../lib/supabase';
-import { apiFetch } from '../lib/api';
 
 const Dashboard: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -32,16 +31,15 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     const fetchInitialDate = async () => {
-      try {
-        const url = `https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?select=date&order=date.desc&limit=1`;
-        const res = await apiFetch(url);
-        const data = await res.json();
-        if (data && data.length > 0) {
-          const lastDate = new Date(data[0].date);
-          setCurrentDate(new Date(lastDate.getFullYear(), lastDate.getMonth(), 1));
-        }
-      } catch (e) {
-        console.error("Dashboard: Erro ao buscar data inicial", e);
+      const { data } = await supabase
+        .from('readings')
+        .select('date')
+        .order('date', { ascending: false })
+        .limit(1);
+
+      if (data && data.length > 0) {
+        const lastDate = new Date(data[0].date);
+        setCurrentDate(new Date(lastDate.getFullYear(), lastDate.getMonth(), 1));
       }
     };
     fetchInitialDate();
@@ -51,77 +49,88 @@ const Dashboard: React.FC = () => {
     setLoading(true);
     setInsight('Analisando dados do mês...');
 
-    try {
-      const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1).toISOString();
-      const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59).toISOString();
-      const prevMonthDate = new Date(date.getFullYear(), date.getMonth() - 1, 1);
-      const startOfPrevMonth = prevMonthDate.toISOString();
-      const endOfPrevMonth = new Date(date.getFullYear(), date.getMonth(), 0, 23, 59, 59).toISOString();
+    const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1).toISOString();
+    const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59).toISOString();
 
-      // Fetch calls in parallel
-      const [currRes, prevRes, aptsRes] = await Promise.all([
-        apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?select=*&date=gte.${startOfMonth}&date=lte.${endOfMonth}`),
-        apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?select=*&date=gte.${startOfPrevMonth}&date=lte.${endOfPrevMonth}`),
-        apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?select=*`)
-      ]);
+    // Fetch current month readings
+    const { data: currentReadings } = await supabase
+      .from('readings')
+      .select('*')
+      .gte('date', startOfMonth)
+      .lte('date', endOfMonth);
 
-      const currentReadings = currRes.ok ? await currRes.json() : [];
-      const prevReadings = prevRes.ok ? await prevRes.json() : [];
-      const apartments = aptsRes.ok ? await aptsRes.json() : [];
+    // Fetch previous month readings for comparison
+    const prevMonthDate = new Date(date.getFullYear(), date.getMonth() - 1, 1);
+    const startOfPrevMonth = prevMonthDate.toISOString();
+    const endOfPrevMonth = new Date(date.getFullYear(), date.getMonth(), 0, 23, 59, 59).toISOString();
 
-      const calculateTotal = (readings: any[], type: 'water' | 'gas') => {
-        return (readings || [])
-          .filter(r => r.type === type && r.current_value)
-          .reduce((acc, r) => acc + (Number(r.current_value) - Number(r.previous_value)), 0);
-      };
+    const { data: prevReadings } = await supabase
+      .from('readings')
+      .select('*')
+      .gte('date', startOfPrevMonth)
+      .lte('date', endOfPrevMonth);
 
-      const currentWater = calculateTotal(currentReadings, 'water');
-      const currentGas = calculateTotal(currentReadings, 'gas');
-      const prevWater = calculateTotal(prevReadings, 'water');
-      const prevGas = calculateTotal(prevReadings, 'gas');
+    const calculateTotal = (readings: any[], type: 'water' | 'gas') => {
+      return (readings || [])
+        .filter(r => r.type === type && r.current_value)
+        .reduce((acc, r) => acc + (Number(r.current_value) - Number(r.previous_value)), 0);
+    };
 
-      const calculateChange = (current: number, previous: number) => {
-        if (previous === 0) return 0;
-        return ((current - previous) / previous) * 100;
-      };
+    const currentWater = calculateTotal(currentReadings || [], 'water');
+    const currentGas = calculateTotal(currentReadings || [], 'gas');
+    const prevWater = calculateTotal(prevReadings || [], 'water');
+    const prevGas = calculateTotal(prevReadings || [], 'gas');
 
-      const waterChange = calculateChange(currentWater, prevWater);
-      const gasChange = calculateChange(currentGas, prevGas);
+    const calculateChange = (current: number, previous: number) => {
+      if (previous === 0) return 0;
+      return ((current - previous) / previous) * 100;
+    };
 
-      setSummary({ water: currentWater, gas: currentGas, waterChange, gasChange });
+    const waterChange = calculateChange(currentWater, prevWater);
+    const gasChange = calculateChange(currentGas, prevGas);
 
-      if (currentWater > 0 || currentGas > 0) {
-        const res = await analyzeConsumption({
-          totalWater: currentWater,
-          totalGas: currentGas,
-          waterChange,
-          gasChange,
-          month: date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
-        });
-        setInsight(res);
-      } else {
-        setInsight('Sem dados de leitura para este mês.');
-      }
+    setSummary({
+      water: currentWater,
+      gas: currentGas,
+      waterChange,
+      gasChange
+    });
 
-      if (apartments.length > 0 && currentReadings.length > 0) {
-        const calcRank = (type: 'water' | 'gas') => {
-          return currentReadings
-            .filter((r: any) => r.type === type && r.current_value)
-            .map((r: any) => {
-              const apt = apartments.find((a: any) => String(a.id) === String(r.apartment_id));
-              return { unit: apt ? `${apt.number}${apt.block}` : '?', usage: Number(r.current_value) - Number(r.previous_value) };
-            })
-            .sort((a: any, b: any) => b.usage - a.usage)
-            .slice(0, 3);
-        };
-        setRankings({ water: calcRank('water'), gas: calcRank('gas') });
-      }
-    } catch (e) {
-      console.error("Dashboard: Erro ao carregar dados", e);
-      setInsight("Erro de conexão ao carregar dados do dashboard.");
-    } finally {
-      setLoading(false);
+    // IA Analysis with Real Data
+    if (currentWater > 0 || currentGas > 0) {
+      const res = await analyzeConsumption({
+        totalWater: currentWater,
+        totalGas: currentGas,
+        waterChange,
+        gasChange,
+        month: date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+      });
+      setInsight(res);
+    } else {
+      setInsight('Sem dados de leitura para este mês.');
     }
+
+    // Rankings Logic
+    const { data: apartments } = await supabase.from('apartments').select('*');
+    if (apartments && currentReadings) {
+      const calcRank = (type: 'water' | 'gas') => {
+        const usagePerUnit = (currentReadings || [])
+          .filter(r => r.type === type && r.current_value)
+          .map(r => {
+            const apt = apartments.find(a => String(a.id) === String(r.apartment_id));
+            return {
+              unit: apt ? `${apt.number}${apt.block}` : '?',
+              usage: Number(r.current_value) - Number(r.previous_value)
+            };
+          })
+          .sort((a, b) => b.usage - a.usage)
+          .slice(0, 3);
+        return usagePerUnit;
+      };
+      setRankings({ water: calcRank('water'), gas: calcRank('gas') });
+    }
+
+    setLoading(false);
   };
 
   useEffect(() => {

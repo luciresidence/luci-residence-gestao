@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { apiFetch } from '../lib/api';
 import { Apartment } from '../types';
 
 const ReadingForm: React.FC = () => {
@@ -43,114 +42,155 @@ const ReadingForm: React.FC = () => {
       setGasId(null);
 
       const fetchData = async () => {
-        try {
-          // 1. Fetch Apartment Data
-          const aptRes = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?id=eq.${id}&select=*`);
-          const aptDataList = await aptRes.json();
-          const aptData = aptDataList[0];
+        // Fetch Apartment Data
+        const { data: aptData } = await supabase
+          .from('apartments')
+          .select('*')
+          .eq('id', id)
+          .single();
 
-          if (aptData) {
-            setApartment({ ...aptData, residentName: aptData.resident_name, residentRole: aptData.resident_role, avatarUrl: aptData.avatar_url });
-          }
+        if (aptData) {
+          setApartment({
+            ...aptData,
+            residentName: aptData.resident_name,
+            residentRole: aptData.resident_role,
+            avatarUrl: aptData.avatar_url
+          });
+        }
 
-          // 2. Fetch ALL apartments for navigation
-          const allRes = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?select=id,number,block,resident_name&order=number`);
-          const allApts = await allRes.json();
-          if (allApts) {
-            const sortedApts = allApts.sort((a: any, b: any) => {
-              const numA = parseInt(a.number);
-              const numB = parseInt(b.number);
-              if (isNaN(numA) && !isNaN(numB)) return -1;
-              if (!isNaN(numA) && isNaN(numB)) return 1;
-              if (isNaN(numA) && isNaN(numB)) return a.number.localeCompare(b.number);
-              if (a.block !== b.block) return a.block.localeCompare(b.block);
-              return numA - numB;
-            });
-            setAllApartments(sortedApts);
-            setCurrentIndex(sortedApts.findIndex((a: any) => a.id === id));
-          }
+        // Fetch ALL apartments for navigation
+        const { data: allApts } = await supabase.from('apartments').select('id, number, block, resident_name').order('number');
+        if (allApts) {
+          // Reuse sorting logic from ApartmentList to ensure consistency
+          const sortedApts = allApts.sort((a, b) => {
+            const numA = parseInt(a.number);
+            const numB = parseInt(b.number);
+            const isNumericA = !isNaN(numA);
+            const isNumericB = !isNaN(numB);
 
-          // 3. Fetch current month readings
-          const startOfMonth = new Date(referenceDate);
-          startOfMonth.setDate(1);
-          startOfMonth.setHours(0, 0, 0, 0);
-          const nextMonth = new Date(startOfMonth);
-          nextMonth.setMonth(nextMonth.getMonth() + 1);
+            if (!isNumericA && isNumericB) return -1;
+            if (isNumericA && !isNumericB) return 1;
+            if (!isNumericA && !isNumericB) return a.number.localeCompare(b.number);
+            if (a.block !== b.block) return a.block.localeCompare(b.block);
+            return numA - numB;
+          });
 
-          const readsRes = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?apartment_id=eq.${id}&date=gte.${startOfMonth.toISOString()}&date=lt.${nextMonth.toISOString()}&select=*`);
-          const reads = await readsRes.json();
+          setAllApartments(sortedApts);
+          const idx = sortedApts.findIndex(a => a.id === id);
+          setCurrentIndex(idx);
+        }
 
-          if (reads) {
-            const water = reads.find((r: any) => r.type === 'water');
-            if (water) {
-              if (water.current_value) { setWaterValue(String(water.current_value)); setWaterSaved(true); }
-              setWaterId(water.id);
+        // Fetch current month readings (drafts/saved)
+        // Use the reference date to determine the month
+        const startOfMonth = new Date(referenceDate);
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+
+        // End of month is useful if we want to limit duplicates strictly to that month context, 
+        // but existing logic uses gte startOfMonth which implies "that month or later". 
+        // For historical data, we should probably check within the specific month. 
+        // But to keep consistency with "latest reading for that month", let's start with startOfMonth.
+        // Actually, better: filter strict month range if date is provided.
+        // For now, let's keep the logic consistent: get readings for the specific month.
+
+        // However, if we are in "Feb", we want readings for "Feb".
+        // The original logic was gte startOfMonth (reading current month). 
+        // If we go back to Jan, we want readings for Jan.
+
+        const nextMonth = new Date(startOfMonth);
+        nextMonth.setMonth(nextMonth.getMonth() + 1);
+
+        const { data: reads } = await supabase
+          .from('readings')
+          .select('*')
+          .eq('apartment_id', id)
+          .gte('date', startOfMonth.toISOString())
+          .lt('date', nextMonth.toISOString());
+
+        if (reads) {
+          const water = reads.find(r => r.type === 'water');
+          if (water) {
+            if (water.current_value) {
+              setWaterValue(String(water.current_value));
+              setWaterSaved(true);
             }
-            const gas = reads.find((r: any) => r.type === 'gas');
-            if (gas) {
-              if (gas.current_value) { setGasValue(String(gas.current_value)); setGasSaved(true); }
-              setGasId(gas.id);
-            }
+            setWaterId(water.id);
           }
 
-          // 4. Fetch previous readings
-          const prevRes = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?apartment_id=eq.${id}&date=lt.${startOfMonth.toISOString()}&order=date.desc&select=*`);
-          const prevReads = await prevRes.json();
-          if (prevReads) {
-            const prevWaterRead = prevReads.find((r: any) => r.type === 'water');
-            if (prevWaterRead) setPrevWater(Number(prevWaterRead.current_value || 0));
-            const prevGasRead = prevReads.find((r: any) => r.type === 'gas');
-            if (prevGasRead) setPrevGas(Number(prevGasRead.current_value || 0));
+          const gas = reads.find(r => r.type === 'gas');
+          if (gas) {
+            if (gas.current_value) {
+              setGasValue(String(gas.current_value));
+              setGasSaved(true);
+            }
+            setGasId(gas.id);
           }
-        } catch (e) {
-          console.error("ReadingForm: Erro ao carregar dados", e);
+        }
+
+        // Fetch previous reading for validation
+        const { data: prevReads } = await supabase
+          .from('readings')
+          .select('*')
+          .eq('apartment_id', id)
+          .lt('date', startOfMonth.toISOString())
+          .order('date', { ascending: false });
+
+        if (prevReads) {
+          const prevWaterRead = prevReads.find(r => r.type === 'water');
+          if (prevWaterRead) setPrevWater(Number(prevWaterRead.current_value || 0));
+          const prevGasRead = prevReads.find(r => r.type === 'gas');
+          if (prevGasRead) setPrevGas(Number(prevGasRead.current_value || 0));
         }
       };
       fetchData();
     }
   }, [id]);
 
-  if (!apartment) return <div className="p-10 text-center text-slate-500 font-bold">Carregando unidade...</div>;
+  if (!apartment) return <div className="p-10 text-center text-slate-500 font-bold">Unidade não encontrada.</div>;
 
   const handleSaveWater = async () => {
     if (id && waterValue !== '') {
       const currentVal = parseFloat(waterValue);
       if (currentVal < prevWater) {
-        if (!confirm(`Atenção: A leitura atual (${waterValue}) é menor que a anterior (${prevWater}). Deseja salvar mesmo assim?`)) return;
-      }
-
-      const payload = { apartment_id: id, type: 'water', previous_value: prevWater, current_value: currentVal, date: referenceDate.toISOString(), status: 'LIDO' };
-
-      try {
-        let res;
-        if (waterId) {
-          res = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?id=eq.${waterId}`, {
-            method: 'PATCH',
-            body: JSON.stringify(payload)
-          });
-        } else {
-          res = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings`, {
-            method: 'POST',
-            body: JSON.stringify(payload)
-          });
-          const savedData = await res.json();
-          if (savedData && savedData[0]) setWaterId(savedData[0].id);
+        if (!confirm(`Atenção: A leitura atual (${waterValue}) é menor que a anterior (${prevWater}). Deseja salvar mesmo assim?`)) {
+          return;
         }
-        if (res.ok) setWaterSaved(true);
-        else alert('Erro ao salvar água.');
-      } catch (e) {
-        alert('Erro de conexão ao salvar água.');
       }
+
+      const payload = {
+        apartment_id: id,
+        type: 'water',
+        previous_value: prevWater,
+        current_value: currentVal,
+        date: referenceDate.toISOString(),
+        status: 'LIDO'
+      };
+
+      let error;
+      if (waterId) {
+        const { error: err } = await supabase.from('readings').update(payload).eq('id', waterId);
+        error = err;
+      } else {
+        const { data, error: err } = await supabase.from('readings').insert([payload]).select().single();
+        if (data) setWaterId(data.id);
+        error = err;
+      }
+
+      if (error) alert('Erro ao salvar: ' + error.message);
+      else setWaterSaved(true);
     }
   };
 
   const handleDeleteWater = async () => {
     if (waterId && confirm('Tem certeza que deseja excluir a leitura de ÁGUA atual?')) {
-      const res = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?id=eq.${waterId}`, {
-        method: 'DELETE'
-      });
-      if (res.ok) { setWaterValue(''); setWaterId(null); setWaterSaved(false); }
-      else alert('Erro ao excluir leitura.');
+      const { error } = await supabase.from('readings').delete().eq('id', waterId);
+      if (error) {
+        alert('Erro ao excluir: ' + error.message);
+      } else {
+        setWaterValue('');
+        setWaterId(null);
+        setWaterSaved(false);
+      }
     }
   };
 
@@ -158,41 +198,45 @@ const ReadingForm: React.FC = () => {
     if (id && gasValue !== '') {
       const currentVal = parseFloat(gasValue);
       if (currentVal < prevGas) {
-        if (!confirm(`Atenção: A leitura atual (${gasValue}) é menor que a anterior (${prevGas}). Deseja salvar mesmo assim?`)) return;
-      }
-
-      const payload = { apartment_id: id, type: 'gas', previous_value: prevGas, current_value: currentVal, date: referenceDate.toISOString(), status: 'LIDO' };
-
-      try {
-        let res;
-        if (gasId) {
-          res = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?id=eq.${gasId}`, {
-            method: 'PATCH',
-            body: JSON.stringify(payload)
-          });
-        } else {
-          res = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings`, {
-            method: 'POST',
-            body: JSON.stringify(payload)
-          });
-          const savedData = await res.json();
-          if (savedData && savedData[0]) setGasId(savedData[0].id);
+        if (!confirm(`Atenção: A leitura atual (${gasValue}) é menor que a anterior (${prevGas}). Deseja salvar mesmo assim?`)) {
+          return;
         }
-        if (res.ok) setGasSaved(true);
-        else alert('Erro ao salvar gás.');
-      } catch (e) {
-        alert('Erro de conexão ao salvar gás.');
       }
+
+      const payload = {
+        apartment_id: id,
+        type: 'gas',
+        previous_value: prevGas,
+        current_value: currentVal,
+        date: referenceDate.toISOString(),
+        status: 'LIDO'
+      };
+
+      let error;
+      if (gasId) {
+        const { error: err } = await supabase.from('readings').update(payload).eq('id', gasId);
+        error = err;
+      } else {
+        const { data, error: err } = await supabase.from('readings').insert([payload]).select().single();
+        if (data) setGasId(data.id);
+        error = err;
+      }
+
+      if (error) alert('Erro ao salvar: ' + error.message);
+      else setGasSaved(true);
     }
   };
 
   const handleDeleteGas = async () => {
     if (gasId && confirm('Tem certeza que deseja excluir a leitura de GÁS atual?')) {
-      const res = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?id=eq.${gasId}`, {
-        method: 'DELETE'
-      });
-      if (res.ok) { setGasValue(''); setGasId(null); setGasSaved(false); }
-      else alert('Erro ao excluir leitura.');
+      const { error } = await supabase.from('readings').delete().eq('id', gasId);
+      if (error) {
+        alert('Erro ao excluir: ' + error.message);
+      } else {
+        setGasValue('');
+        setGasId(null);
+        setGasSaved(false);
+      }
     }
   };
 
