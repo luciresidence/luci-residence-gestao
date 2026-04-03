@@ -33,8 +33,9 @@ const Dashboard: React.FC = () => {
     const fetchInitialDate = async () => {
       try {
         const supabaseKey = (supabase as any).supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsaXhvd29mc3NiaW11ZGJyZWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NzcyNjksImV4cCI6MjA4NDM1MzI2OX0.28TcTxfnLUFr-CJ-4C7sTVSyrd_jDVkaf46qEIl4Sbo';
+        const headers = { 'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey };
         const url = `https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?select=date&order=date.desc&limit=1&apikey=${supabaseKey}`;
-        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${supabaseKey}` } });
+        const res = await fetch(url, { headers });
         const data = await res.json();
         if (data && data.length > 0) {
           const lastDate = new Date(data[0].date);
@@ -59,11 +60,13 @@ const Dashboard: React.FC = () => {
       const startOfPrevMonth = prevMonthDate.toISOString();
       const endOfPrevMonth = new Date(date.getFullYear(), date.getMonth(), 0, 23, 59, 59).toISOString();
 
+      const headers = { 'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey };
+
       // Fetch calls in parallel
       const [currRes, prevRes, aptsRes] = await Promise.all([
-        fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?select=*&date=gte.${startOfMonth}&date=lte.${endOfMonth}&apikey=${supabaseKey}`, { headers: { 'Authorization': `Bearer ${supabaseKey}` } }),
-        fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?select=*&date=gte.${startOfPrevMonth}&date=lte.${endOfPrevMonth}&apikey=${supabaseKey}`, { headers: { 'Authorization': `Bearer ${supabaseKey}` } }),
-        fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?select=*&apikey=${supabaseKey}`, { headers: { 'Authorization': `Bearer ${supabaseKey}` } })
+        fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?select=*&date=gte.${startOfMonth}&date=lte.${endOfMonth}`, { headers }),
+        fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?select=*&date=gte.${startOfPrevMonth}&date=lte.${endOfPrevMonth}`, { headers }),
+        fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?select=*`, { headers })
       ]);
 
       const currentReadings = currRes.ok ? await currRes.json() : [];

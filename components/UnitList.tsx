@@ -39,7 +39,8 @@ const UnitList: React.FC = () => {
       const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey
         }
       });
 

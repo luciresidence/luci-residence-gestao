@@ -19,8 +19,10 @@ const ResidentDetails: React.FC = () => {
         try {
           const supabaseKey = (supabase as any).supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsaXhvd29mc3NiaW11ZGJyZWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NzcyNjksImV4cCI6MjA4NDM1MzI2OX0.28TcTxfnLUFr-CJ-4C7sTVSyrd_jDVkaf46qEIl4Sbo';
           
+          const headers = { 'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey };
+          
           // 1. Fetch Apartment basic info
-          const aptRes = await fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?id=eq.${id}&select=*&apikey=${supabaseKey}`, { headers: { 'Authorization': `Bearer ${supabaseKey}` } });
+          const aptRes = await fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?id=eq.${id}&select=*`, { headers });
           const aptList = await aptRes.json();
           const aptData = aptList[0];
 
@@ -34,7 +36,7 @@ const ResidentDetails: React.FC = () => {
           }
 
           // 2. Fetch latest approved registration
-          const regRes = await fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/resident_registrations?apartment_id=eq.${id}&status=eq.APROVADO&order=created_at.desc&limit=1&select=*&apikey=${supabaseKey}`, { headers: { 'Authorization': `Bearer ${supabaseKey}` } });
+          const regRes = await fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/resident_registrations?apartment_id=eq.${id}&status=eq.APROVADO&order=created_at.desc&limit=1&select=*`, { headers });
           const regList = await regRes.json();
           const regData = regList[0];
 

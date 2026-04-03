@@ -50,8 +50,8 @@ const ApartmentList: React.FC = () => {
       const readsUrl = `https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?select=*&apikey=${supabaseKey}`;
 
       const [aptsRes, readsRes] = await Promise.all([
-        fetch(aptsUrl, { headers: { 'Authorization': `Bearer ${supabaseKey}` } }),
-        fetch(readsUrl, { headers: { 'Authorization': `Bearer ${supabaseKey}` } })
+        fetch(aptsUrl, { headers: { 'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey } }),
+        fetch(readsUrl, { headers: { 'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey } })
       ]);
 
       if (!aptsRes.ok) throw new Error("Erro ao buscar unidades");

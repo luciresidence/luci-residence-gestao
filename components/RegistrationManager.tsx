@@ -71,7 +71,12 @@ const RegistrationManager: React.FC = () => {
         try {
             const supabaseKey = (supabase as any).supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsaXhvd29mc3NiaW11ZGJyZWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NzcyNjksImV4cCI6MjA4NDM1MzI2OX0.28TcTxfnLUFr-CJ-4C7sTVSyrd_jDVkaf46qEIl4Sbo';
             const url = `https://blixowofssbimudbrejm.supabase.co/rest/v1/resident_registrations?select=*,apartments(number,block)&status=eq.PENDENTE&order=created_at.desc&apikey=${supabaseKey}`;
-            const res = await fetch(url, { headers: { 'Authorization': `Bearer ${supabaseKey}` } });
+            const res = await fetch(url, { 
+                headers: { 
+                    'Authorization': `Bearer ${supabaseKey}`,
+                    'apikey': supabaseKey
+                } 
+            });
             const data = await res.json();
             setRegistrations(data || []);
         } catch (e) {
