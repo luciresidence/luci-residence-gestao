@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { apiFetch } from '../lib/api';
 import { useNavigate } from 'react-router-dom';
 
 interface Apartment {
@@ -46,14 +46,8 @@ const ResidentRegistration: React.FC = () => {
     const fetchApartments = async () => {
         setIsLoading(true);
         try {
-            const supabaseKey = (supabase as any).supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsaXhvd29mc3NiaW11ZGJyZWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NzcyNjksImV4cCI6MjA4NDM1MzI2OX0.28TcTxfnLUFr-CJ-4C7sTVSyrd_jDVkaf46qEIl4Sbo';
-            const url = `https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?select=id,number,block&order=number&apikey=${supabaseKey}`;
-            const res = await fetch(url, { 
-                headers: { 
-                    'Authorization': `Bearer ${supabaseKey}`,
-                    'apikey': supabaseKey
-                } 
-            });
+            const url = `https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?select=id,number,block&order=number`;
+            const res = await apiFetch(url);
             const data = await res.json();
             setApartments(data || []);
         } catch (e) {
@@ -285,7 +279,6 @@ const ResidentRegistration: React.FC = () => {
 
         setIsSubmitting(true);
         try {
-            const supabaseKey = (supabase as any).supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsaXhvd29mc3NiaW11ZGJyZWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NzcyNjksImV4cCI6MjA4NDM1MzI2OX0.28TcTxfnLUFr-CJ-4C7sTVSyrd_jDVkaf46qEIl4Sbo';
             const payload = {
                 apartment_id: selectedApartment,
                 full_name: fullName,
@@ -303,13 +296,8 @@ const ResidentRegistration: React.FC = () => {
                 status: 'PENDENTE'
             };
 
-            const res = await fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/resident_registrations?apikey=${supabaseKey}`, {
+            const res = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/resident_registrations`, {
                 method: 'POST',
-                headers: { 
-                    'Authorization': `Bearer ${supabaseKey}`, 
-                    'Content-Type': 'application/json',
-                    'apikey': supabaseKey
-                },
                 body: JSON.stringify(payload)
             });
 

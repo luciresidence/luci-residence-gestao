@@ -1,8 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
-import { storage } from '../data';
+import { apiFetch } from '../lib/api';
 import { Apartment } from '../types';
 
 const ResidentDetails: React.FC = () => {
@@ -17,31 +15,26 @@ const ResidentDetails: React.FC = () => {
       const fetchData = async () => {
         setIsLoading(true);
         try {
-          const supabaseKey = (supabase as any).supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsaXhvd29mc3NiaW11ZGJyZWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NzcyNjksImV4cCI6MjA4NDM1MzI2OX0.28TcTxfnLUFr-CJ-4C7sTVSyrd_jDVkaf46qEIl4Sbo';
-          
-          const headers = { 'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey };
-          
           // 1. Fetch Apartment basic info
-          const aptRes = await fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?id=eq.${id}&select=*`, { headers });
-          const aptList = await aptRes.json();
-          const aptData = aptList[0];
+          const aptRes = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?id=eq.${id}&select=*`);
+          const aptData = await aptRes.json();
 
-          if (aptData) {
+          if (aptData && aptData.length > 0) {
+            const apt = aptData[0];
             setApartment({
-              ...aptData,
-              residentName: aptData.resident_name,
-              residentRole: aptData.resident_role,
-              avatarUrl: aptData.avatar_url
+              ...apt,
+              residentName: apt.resident_name,
+              residentRole: apt.resident_role,
+              avatarUrl: apt.avatar_url
             });
           }
 
           // 2. Fetch latest approved registration
-          const regRes = await fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/resident_registrations?apartment_id=eq.${id}&status=eq.APROVADO&order=created_at.desc&limit=1&select=*`, { headers });
-          const regList = await regRes.json();
-          const regData = regList[0];
+          const regRes = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/resident_registrations?apartment_id=eq.${id}&status=eq.APROVADO&order=created_at.desc&limit=1&select=*`);
+          const regData = await regRes.json();
 
-          if (regData) {
-            setRegistration(regData);
+          if (regData && regData.length > 0) {
+            setRegistration(regData[0]);
           }
         } catch (e) {
           console.error("ResidentDetails: Erro ao carregar", e);

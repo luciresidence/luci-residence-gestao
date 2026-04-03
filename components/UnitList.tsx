@@ -1,8 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
-import { storage } from '../data';
+import { apiFetch } from '../lib/api';
 import { Apartment } from '../types';
 
 const LogoSmall = () => (
@@ -32,17 +30,8 @@ const UnitList: React.FC = () => {
     console.log("UnitList: Iniciando busca de unidades...");
     
     try {
-      // Tentativa 1: Buscar do Supabase. A chave anon-key do projeto é fixa.
-      const supabaseKey = (supabase as any).role === 'anon' ? (supabase as any).supabaseKey : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsaXhvd29mc3NiaW11ZGJyZWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NzcyNjksImV4cCI6MjA4NDM1MzI2OX0.28TcTxfnLUFr-CJ-4C7sTVSyrd_jDVkaf46qEIl4Sbo';
-      const url = `https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?select=*&apikey=${supabaseKey}`;
-      
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-          'apikey': supabaseKey
-        }
-      });
+      const url = `https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?select=*&order=number`;
+      const response = await apiFetch(url);
 
       if (!response.ok) {
         throw new Error(`Servidor respondeu com status ${response.status}`);

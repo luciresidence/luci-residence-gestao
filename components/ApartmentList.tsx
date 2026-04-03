@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { apiFetch } from '../lib/api';
 import { reportService } from '../services/reportService';
 
 const ApartmentList: React.FC = () => {
@@ -44,14 +45,12 @@ const ApartmentList: React.FC = () => {
     console.log("Iniciando busca de dados (Medições)...");
     
     try {
-      const supabaseKey = (supabase as any).role === 'anon' ? (supabase as any).supabaseKey : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsaXhvd29mc3NiaW11ZGJyZWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NzcyNjksImV4cCI6MjA4NDM1MzI2OX0.28TcTxfnLUFr-CJ-4C7sTVSyrd_jDVkaf46qEIl4Sbo';
-      
-      const aptsUrl = `https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?select=*&order=number&apikey=${supabaseKey}`;
-      const readsUrl = `https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?select=*&apikey=${supabaseKey}`;
+      const aptsUrl = `https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?select=*&order=number`;
+      const readsUrl = `https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?select=*`;
 
       const [aptsRes, readsRes] = await Promise.all([
-        fetch(aptsUrl, { headers: { 'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey } }),
-        fetch(readsUrl, { headers: { 'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey } })
+        apiFetch(aptsUrl),
+        apiFetch(readsUrl)
       ]);
 
       if (!aptsRes.ok) throw new Error("Erro ao buscar unidades");

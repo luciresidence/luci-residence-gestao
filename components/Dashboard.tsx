@@ -16,6 +16,7 @@ const Logo = () => (
 );
 
 import { supabase } from '../lib/supabase';
+import { apiFetch } from '../lib/api';
 
 const Dashboard: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -32,10 +33,8 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     const fetchInitialDate = async () => {
       try {
-        const supabaseKey = (supabase as any).supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsaXhvd29mc3NiaW11ZGJyZWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NzcyNjksImV4cCI6MjA4NDM1MzI2OX0.28TcTxfnLUFr-CJ-4C7sTVSyrd_jDVkaf46qEIl4Sbo';
-        const headers = { 'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey };
-        const url = `https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?select=date&order=date.desc&limit=1&apikey=${supabaseKey}`;
-        const res = await fetch(url, { headers });
+        const url = `https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?select=date&order=date.desc&limit=1`;
+        const res = await apiFetch(url);
         const data = await res.json();
         if (data && data.length > 0) {
           const lastDate = new Date(data[0].date);
@@ -53,20 +52,17 @@ const Dashboard: React.FC = () => {
     setInsight('Analisando dados do mês...');
 
     try {
-      const supabaseKey = (supabase as any).supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsaXhvd29mc3NiaW11ZGJyZWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NzcyNjksImV4cCI6MjA4NDM1MzI2OX0.28TcTxfnLUFr-CJ-4C7sTVSyrd_jDVkaf46qEIl4Sbo';
       const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1).toISOString();
       const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59).toISOString();
       const prevMonthDate = new Date(date.getFullYear(), date.getMonth() - 1, 1);
       const startOfPrevMonth = prevMonthDate.toISOString();
       const endOfPrevMonth = new Date(date.getFullYear(), date.getMonth(), 0, 23, 59, 59).toISOString();
 
-      const headers = { 'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey };
-
       // Fetch calls in parallel
       const [currRes, prevRes, aptsRes] = await Promise.all([
-        fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?select=*&date=gte.${startOfMonth}&date=lte.${endOfMonth}`, { headers }),
-        fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?select=*&date=gte.${startOfPrevMonth}&date=lte.${endOfPrevMonth}`, { headers }),
-        fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?select=*`, { headers })
+        apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?select=*&date=gte.${startOfMonth}&date=lte.${endOfMonth}`),
+        apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?select=*&date=gte.${startOfPrevMonth}&date=lte.${endOfPrevMonth}`),
+        apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?select=*`)
       ]);
 
       const currentReadings = currRes.ok ? await currRes.json() : [];

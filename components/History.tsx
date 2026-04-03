@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
-import { Apartment } from '../types';
+import { apiFetch } from '../lib/api';
 
 interface HistoryProps {
   onImageClick: (url: string) => void;
@@ -18,16 +17,9 @@ const History: React.FC<HistoryProps> = ({ onImageClick }) => {
     console.log("History: Buscando histórico...");
     
     try {
-      const supabaseKey = (supabase as any).supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsaXhvd29mc3NiaW11ZGJyZWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NzcyNjksImV4cCI6MjA4NDM1MzI2OX0.28TcTxfnLUFr-CJ-4C7sTVSyrd_jDVkaf46qEIl4Sbo';
-      const url = `https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?select=*,apartments(number,block,resident_name)&order=date.desc&apikey=${supabaseKey}`;
+      const url = `https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?select=*,apartments(number,block,resident_name)&order=date.desc`;
       
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-          'apikey': supabaseKey
-        }
-      });
+      const response = await apiFetch(url);
 
       if (!response.ok) {
         throw new Error(`Erro ${response.status} ao carregar histórico`);

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { apiFetch } from '../lib/api';
 import { Apartment } from '../types';
 
 interface AdditionalResident {
@@ -50,49 +51,46 @@ const UnitRegistration: React.FC = () => {
     }
   }, [id, isEdit]);
 
-  const fetchData = async () => {
-    setIsLoading(true);
-    try {
-      const supabaseKey = (supabase as any).supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsaXhvd29mc3NiaW11ZGJyZWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NzcyNjksImV4cCI6MjA4NDM1MzI2OX0.28TcTxfnLUFr-CJ-4C7sTVSyrd_jDVkaf46qEIl4Sbo';
-      const headers = { 'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey };
-      
-      // 1. Fetch Apartment Data
-      const aptRes = await fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?id=eq.${id}&select=*`, { headers });
-      const aptList = await aptRes.json();
-      const apt = aptList[0];
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        // 1. Fetch Apartment Data
+        const aptRes = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?id=eq.${id}&select=*`);
+        const aptList = await aptRes.json();
+        const apt = aptList[0];
+        
+        if (apt) {
+          setNumber(apt.number);
+          setBlock(apt.block);
+          setResidentName(apt.resident_name || '');
+          setResidentType(apt.resident_role || 'Proprietário');
 
-      if (apt) {
-        setNumber(apt.number);
-        setBlock(apt.block);
-        setResidentName(apt.resident_name || '');
-        setResidentType(apt.resident_role || 'Proprietário');
-
-        // 2. Fetch Latest Approved Registration
-        const regRes = await fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/resident_registrations?apartment_id=eq.${id}&status=eq.APROVADO&order=created_at.desc&limit=1&select=*`, { headers });
-        const regList = await regRes.json();
-        const reg = regList[0];
-
-        if (reg) {
-          setResidentName(reg.full_name);
-          setCpf(reg.cpf ? formatCPF(reg.cpf) : '');
-          setBirthDate(reg.birth_date || '');
-          setPhone(reg.phone ? formatPhone(reg.phone) : '');
-          setResidentType(reg.resident_type);
-          setGarageSpot(reg.garage_spot || '');
-          setIsFinancialResponsible(reg.is_financial_responsible);
-          setFinancialResponsibleName(reg.financial_responsible_name || '');
-          setFinancialResponsibleCpf(reg.financial_responsible_cpf ? formatCPF(reg.financial_responsible_cpf) : '');
-          setOwnerName(reg.owner_name || '');
-          setOwnerPhone(reg.owner_phone ? formatPhone(reg.owner_phone) : '');
-          setAdditionalResidents(reg.additional_residents || []);
+          // 2. Fetch Latest Approved Registration
+          const regRes = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/resident_registrations?apartment_id=eq.${id}&status=eq.APROVADO&order=created_at.desc&limit=1&select=*`);
+          const regList = await regRes.json();
+          const reg = regList[0];
+          
+          if (reg) {
+            setResidentName(reg.full_name);
+            setCpf(reg.cpf ? formatCPF(reg.cpf) : '');
+            setBirthDate(reg.birth_date || '');
+            setPhone(reg.phone ? formatPhone(reg.phone) : '');
+            setResidentType(reg.resident_type);
+            setGarageSpot(reg.garage_spot || '');
+            setIsFinancialResponsible(reg.is_financial_responsible);
+            setFinancialResponsibleName(reg.financial_responsible_name || '');
+            setFinancialResponsibleCpf(reg.financial_responsible_cpf ? formatCPF(reg.financial_responsible_cpf) : '');
+            setOwnerName(reg.owner_name || '');
+            setOwnerPhone(reg.owner_phone ? formatPhone(reg.owner_phone) : '');
+            setAdditionalResidents(reg.additional_residents || []);
+          }
         }
+      } catch (e) {
+        console.error("Erro ao carregar dados:", e);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (e) {
-      console.error("UnitRegistration: Erro ao carregar dados", e);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
 
   // Helpers
   const formatCPF = (value: string) => {
@@ -124,25 +122,21 @@ const UnitRegistration: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     if (e && e.preventDefault) e.preventDefault();
     setIsSaving(true);
-    const supabaseKey = (supabase as any).supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsaXhvd29mc3NiaW11ZGJyZWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NzcyNjksImV4cCI6MjA4NDM1MzI2OX0.28TcTxfnLUFr-CJ-4C7sTVSyrd_jDVkaf46qEIl4Sbo';
-    const headers = { 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json', 'apikey': supabaseKey };
-
     try {
       // 1. Update/Insert Apartment
       const aptPayload = { number, block, resident_name: residentName, resident_role: residentType };
       let aptId = id;
 
       if (isEdit) {
-        await fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?id=eq.${id}`, {
+        await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?id=eq.${id}`, {
           method: 'PATCH',
-          headers,
           body: JSON.stringify(aptPayload)
         });
       } else {
-        const res = await fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments`, {
+        const res = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments`, {
           method: 'POST',
-          headers: { ...headers, 'Prefer': 'return=representation' },
-          body: JSON.stringify(aptPayload)
+          body: JSON.stringify(aptPayload),
+          headers: { 'Prefer': 'return=representation' }
         });
         const savedApt = await res.json();
         aptId = savedApt[0].id;
@@ -166,20 +160,18 @@ const UnitRegistration: React.FC = () => {
         status: 'APROVADO'
       };
 
-      const existingRegRes = await fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/resident_registrations?apartment_id=eq.${aptId}&status=eq.APROVADO&select=id`, { headers });
+      const existingRegRes = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/resident_registrations?apartment_id=eq.${aptId}&status=eq.APROVADO&select=id`);
       const existingRegList = await existingRegRes.json();
       const existingReg = existingRegList[0];
 
       if (existingReg) {
-        await fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/resident_registrations?id=eq.${existingReg.id}`, {
+        await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/resident_registrations?id=eq.${existingReg.id}`, {
           method: 'PATCH',
-          headers,
           body: JSON.stringify(regPayload)
         });
       } else {
-        await fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/resident_registrations`, {
+        await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/resident_registrations`, {
           method: 'POST',
-          headers,
           body: JSON.stringify(regPayload)
         });
       }
@@ -468,10 +460,8 @@ const UnitRegistration: React.FC = () => {
               onClick={async () => {
                 if (confirm('Tem certeza que deseja remover esta unidade permanentemente?')) {
                   try {
-                    const supabaseKey = (supabase as any).supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsaXhvd29mc3NiaW11ZGJyZWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NzcyNjksImV4cCI6MjA4NDM1MzI2OX0.28TcTxfnLUFr-CJ-4C7sTVSyrd_jDVkaf46qEIl4Sbo';
-                    const res = await fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?id=eq.${id}`, {
-                      method: 'DELETE',
-                      headers: { 'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey }
+                    const res = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?id=eq.${id}`, {
+                      method: 'DELETE'
                     });
 
                     if (res.ok) navigate('/units');

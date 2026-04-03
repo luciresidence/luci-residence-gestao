@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { apiFetch } from '../lib/api';
 import { Apartment } from '../types';
 
 const ReadingForm: React.FC = () => {
@@ -43,11 +44,8 @@ const ReadingForm: React.FC = () => {
 
       const fetchData = async () => {
         try {
-          const supabaseKey = (supabase as any).supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsaXhvd29mc3NiaW11ZGJyZWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NzcyNjksImV4cCI6MjA4NDM1MzI2OX0.28TcTxfnLUFr-CJ-4C7sTVSyrd_jDVkaf46qEIl4Sbo';
-          const headers = { 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json', 'apikey': supabaseKey };
-          
           // 1. Fetch Apartment Data
-          const aptRes = await fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?id=eq.${id}&select=*`, { headers });
+          const aptRes = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?id=eq.${id}&select=*`);
           const aptDataList = await aptRes.json();
           const aptData = aptDataList[0];
 
@@ -56,7 +54,7 @@ const ReadingForm: React.FC = () => {
           }
 
           // 2. Fetch ALL apartments for navigation
-          const allRes = await fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?select=id,number,block,resident_name&order=number`, { headers });
+          const allRes = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?select=id,number,block,resident_name&order=number`);
           const allApts = await allRes.json();
           if (allApts) {
             const sortedApts = allApts.sort((a: any, b: any) => {
@@ -79,7 +77,7 @@ const ReadingForm: React.FC = () => {
           const nextMonth = new Date(startOfMonth);
           nextMonth.setMonth(nextMonth.getMonth() + 1);
 
-          const readsRes = await fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?apartment_id=eq.${id}&date=gte.${startOfMonth.toISOString()}&date=lt.${nextMonth.toISOString()}&select=*`, { headers });
+          const readsRes = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?apartment_id=eq.${id}&date=gte.${startOfMonth.toISOString()}&date=lt.${nextMonth.toISOString()}&select=*`);
           const reads = await readsRes.json();
 
           if (reads) {
@@ -96,7 +94,7 @@ const ReadingForm: React.FC = () => {
           }
 
           // 4. Fetch previous readings
-          const prevRes = await fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?apartment_id=eq.${id}&date=lt.${startOfMonth.toISOString()}&order=date.desc&select=*`, { headers });
+          const prevRes = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?apartment_id=eq.${id}&date=lt.${startOfMonth.toISOString()}&order=date.desc&select=*`);
           const prevReads = await prevRes.json();
           if (prevReads) {
             const prevWaterRead = prevReads.find((r: any) => r.type === 'water');
@@ -122,21 +120,17 @@ const ReadingForm: React.FC = () => {
       }
 
       const payload = { apartment_id: id, type: 'water', previous_value: prevWater, current_value: currentVal, date: referenceDate.toISOString(), status: 'LIDO' };
-      const supabaseKey = (supabase as any).supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsaXhvd29mc3NiaW11ZGJyZWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NzcyNjksImV4cCI6MjA4NDM1MzI2OX0.28TcTxfnLUFr-CJ-4C7sTVSyrd_jDVkaf46qEIl4Sbo';
-      const headers = { 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Prefer': 'return=representation' };
 
       try {
         let res;
         if (waterId) {
-          res = await fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?id=eq.${waterId}`, {
+          res = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?id=eq.${waterId}`, {
             method: 'PATCH',
-            headers,
             body: JSON.stringify(payload)
           });
         } else {
-          res = await fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings`, {
+          res = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings`, {
             method: 'POST',
-            headers,
             body: JSON.stringify(payload)
           });
           const savedData = await res.json();
@@ -152,10 +146,8 @@ const ReadingForm: React.FC = () => {
 
   const handleDeleteWater = async () => {
     if (waterId && confirm('Tem certeza que deseja excluir a leitura de ÁGUA atual?')) {
-      const supabaseKey = (supabase as any).supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsaXhvd29mc3NiaW11ZGJyZWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NzcyNjksImV4cCI6MjA4NDM1MzI2OX0.28TcTxfnLUFr-CJ-4C7sTVSyrd_jDVkaf46qEIl4Sbo';
-      const res = await fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?id=eq.${waterId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey }
+      const res = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?id=eq.${waterId}`, {
+        method: 'DELETE'
       });
       if (res.ok) { setWaterValue(''); setWaterId(null); setWaterSaved(false); }
       else alert('Erro ao excluir leitura.');
@@ -170,21 +162,17 @@ const ReadingForm: React.FC = () => {
       }
 
       const payload = { apartment_id: id, type: 'gas', previous_value: prevGas, current_value: currentVal, date: referenceDate.toISOString(), status: 'LIDO' };
-      const supabaseKey = (supabase as any).supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsaXhvd29mc3NiaW11ZGJyZWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NzcyNjksImV4cCI6MjA4NDM1MzI2OX0.28TcTxfnLUFr-CJ-4C7sTVSyrd_jDVkaf46qEIl4Sbo';
-      const headers = { 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Prefer': 'return=representation' };
 
       try {
         let res;
         if (gasId) {
-          res = await fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?id=eq.${gasId}`, {
+          res = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?id=eq.${gasId}`, {
             method: 'PATCH',
-            headers,
             body: JSON.stringify(payload)
           });
         } else {
-          res = await fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings`, {
+          res = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings`, {
             method: 'POST',
-            headers,
             body: JSON.stringify(payload)
           });
           const savedData = await res.json();
@@ -200,10 +188,8 @@ const ReadingForm: React.FC = () => {
 
   const handleDeleteGas = async () => {
     if (gasId && confirm('Tem certeza que deseja excluir a leitura de GÁS atual?')) {
-      const supabaseKey = (supabase as any).supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsaXhvd29mc3NiaW11ZGJyZWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NzcyNjksImV4cCI6MjA4NDM1MzI2OX0.28TcTxfnLUFr-CJ-4C7sTVSyrd_jDVkaf46qEIl4Sbo';
-      const res = await fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?id=eq.${gasId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey }
+      const res = await apiFetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?id=eq.${gasId}`, {
+        method: 'DELETE'
       });
       if (res.ok) { setGasValue(''); setGasId(null); setGasSaved(false); }
       else alert('Erro ao excluir leitura.');
