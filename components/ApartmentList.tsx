@@ -11,6 +11,8 @@ const ApartmentList: React.FC = () => {
   const [isReportsOpen, setIsReportsOpen] = useState(false);
   const [exportingReport, setExportingReport] = useState<string | null>(null);
   const [reportType, setReportType] = useState<'mensal' | 'individual'>('mensal');
+  const [error, setError] = useState<string | null>(null);
+  const [isRetrying, setIsRetrying] = useState(false);
 
   // Global filter state for current view
   const [currentReferenceDate, setCurrentReferenceDate] = useState(() => {
@@ -38,48 +40,77 @@ const ApartmentList: React.FC = () => {
 
   const fetchData = async () => {
     setIsLoading(true);
-    const { data: apts } = await supabase.from('apartments').select('*').order('number');
-    const { data: reads } = await supabase.from('readings').select('*');
+    setError(null);
+    console.log("Iniciando busca de dados no Supabase...");
+    
+    try {
+      const { data: apts, error: aptError } = await supabase.from('apartments').select('*').order('number');
+      const { data: reads, error: readsError } = await supabase.from('readings').select('*');
 
-    if (apts) {
-      const mappedApts = apts.map(apt => ({
-        ...apt,
-        residentName: apt.resident_name,
-        residentRole: apt.resident_role,
-        avatarUrl: apt.avatar_url
-      }));
+      if (aptError) {
+        console.error("Erro ao buscar apartamentos:", aptError);
+        setError(`Erro ao carregar unidades: ${aptError.message}`);
+        setIsLoading(false);
+        return;
+      }
 
-      // Ordenação customizada: Unidades com texto primeiro, depois Bloco A, depois Bloco B
-      const sortedApts = mappedApts.sort((a, b) => {
-        const numA = parseInt(a.number);
-        const numB = parseInt(b.number);
-        const isNumericA = !isNaN(numA);
-        const isNumericB = !isNaN(numB);
+      if (readsError) {
+        console.error("Erro ao buscar leituras:", readsError);
+        // Não travamos o fluxo se apenas as leituras falharem, mas avisamos
+        console.warn("As leituras não puderam ser carregadas, mas as unidades serão exibidas.");
+      }
 
-        // Unidades com texto (não numéricos) sempre primeiro
-        if (!isNumericA && isNumericB) return -1;
-        if (isNumericA && !isNumericB) return 1;
+      if (apts) {
+        console.log(`Sucesso! ${apts.length} unidades encontradas.`);
+        const mappedApts = apts.map(apt => ({
+          ...apt,
+          residentName: apt.resident_name || '', // Garantir que não seja nulo
+          residentRole: apt.resident_role || 'Residente',
+          avatarUrl: apt.avatar_url
+        }));
 
-        // Se ambos são texto, ordenar alfabeticamente
-        if (!isNumericA && !isNumericB) {
-          return a.number.localeCompare(b.number);
-        }
+        // Ordenação customizada: Unidades com texto primeiro, depois Bloco A, depois Bloco B
+        const sortedApts = mappedApts.sort((a, b) => {
+          const numA = parseInt(a.number);
+          const numB = parseInt(b.number);
+          const isNumericA = !isNaN(numA);
+          const isNumericB = !isNaN(numB);
 
-        // Se ambos são numéricos, separar por bloco
-        if (a.block !== b.block) {
-          // Bloco A antes do Bloco B
-          return a.block.localeCompare(b.block);
-        }
+          // Unidades com texto (não numéricos) sempre primeiro
+          if (!isNumericA && isNumericB) return -1;
+          if (isNumericA && !isNumericB) return 1;
 
-        // Dentro do mesmo bloco, ordenar por número
-        return numA - numB;
-      });
+          // Se ambos são texto, ordenar alfabeticamente
+          if (!isNumericA && !isNumericB) {
+            return (a.number || '').localeCompare(b.number || '');
+          }
 
-      setApartments(sortedApts);
+          // Se ambos são numéricos, separar por bloco
+          if (a.block !== b.block) {
+            // Bloco A antes do Bloco B
+            return (a.block || '').localeCompare(b.block || '');
+          }
+
+          // Dentro do mesmo bloco, ordenar por número
+          return numA - numB;
+        });
+
+        setApartments(sortedApts);
+      } else {
+        console.warn("Nenhuma unidade retornada do banco.");
+      }
+
+      if (reads) {
+        console.log(`${reads.length} leituras encontradas.`);
+        setSavedReadings(reads);
+      }
+    } catch (err) {
+      console.error("Erro catastrófico no fetchData:", err);
+      setError("Erro inesperado ao conectar ao banco de dados.");
+    } finally {
+      setIsLoading(false);
+      setIsRetrying(false);
     }
-
-    if (reads) setSavedReadings(reads);
-    setIsLoading(false);
   };
 
   useEffect(() => {
@@ -110,7 +141,9 @@ const ApartmentList: React.FC = () => {
   };
 
   const filteredApartments = apartments.filter(ap => {
-    const matchesSearch = ap.number.includes(searchTerm) || ap.residentName.toLowerCase().includes(searchTerm.toLowerCase());
+    const name = ap.residentName || '';
+    const num = ap.number || '';
+    const matchesSearch = num.includes(searchTerm) || name.toLowerCase().includes(searchTerm.toLowerCase());
     const status = getAptStatus(ap.id);
 
     if (filterStatus === 'pendente') return matchesSearch && status.isPending;
@@ -286,10 +319,41 @@ const ApartmentList: React.FC = () => {
         </header>
 
         <div className="p-4 space-y-3">
-          {filteredApartments.length === 0 ? (
+          {error ? (
+            <div className="py-20 text-center space-y-6 px-6">
+              <div className="size-20 bg-rose-50 dark:bg-rose-900/10 rounded-full flex items-center justify-center mx-auto text-primary">
+                <span className="material-symbols-outlined text-4xl">cloud_off</span>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-tighter">Erro de Conexão</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
+                  {error}
+                </p>
+              </div>
+              <button 
+                onClick={() => {
+                  setIsRetrying(true);
+                  fetchData();
+                }}
+                disabled={isRetrying}
+                className="w-full h-12 bg-primary text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-primary/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+              >
+                {isRetrying ? (
+                  <div className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-base">refresh</span>
+                    Tentar Novamente
+                  </>
+                )}
+              </button>
+            </div>
+          ) : filteredApartments.length === 0 ? (
             <div className="py-20 text-center space-y-4">
               <span className="material-symbols-outlined text-5xl text-slate-200">domain_disabled</span>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Nenhuma unidade encontrada</p>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                {searchTerm ? 'Nenhuma unidade encontrada para esta busca' : 'Nenhuma unidade encontrada'}
+              </p>
             </div>
           ) : (
             filteredApartments.map(ap => {

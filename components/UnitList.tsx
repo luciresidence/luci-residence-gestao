@@ -22,18 +22,33 @@ const UnitList: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [units, setUnits] = useState<Apartment[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRetrying, setIsRetrying] = useState(false);
 
-  useEffect(() => {
-    const fetchUnits = async () => {
-      const { data, error } = await supabase
+  const fetchUnits = async () => {
+    setIsLoading(true);
+    setError(null);
+    console.log("UnitList: Buscando unidades no Supabase...");
+    
+    try {
+      const { data, error: fetchError } = await supabase
         .from('apartments')
         .select('*');
 
+      if (fetchError) {
+        console.error("UnitList: Erro ao buscar unidades:", fetchError);
+        setError(`Erro ao carregar unidades: ${fetchError.message}`);
+        setIsLoading(false);
+        return;
+      }
+
       if (data) {
+        console.log(`UnitList: ${data.length} unidades encontradas.`);
         const mappedUnits = data.map(apt => ({
           ...apt,
-          residentName: apt.resident_name,
-          residentRole: apt.resident_role,
+          residentName: apt.resident_name || '',
+          residentRole: apt.resident_role || 'Residente',
           avatarUrl: apt.avatar_url
         }));
 
@@ -50,13 +65,13 @@ const UnitList: React.FC = () => {
 
           // Se ambos são texto, ordenar alfabeticamente
           if (!isNumericA && !isNumericB) {
-            return a.number.localeCompare(b.number);
+            return (a.number || '').localeCompare(b.number || '');
           }
 
           // Se ambos são numéricos, separar por bloco
           if (a.block !== b.block) {
             // Bloco A antes do Bloco B
-            return a.block.localeCompare(b.block);
+            return (a.block || '').localeCompare(b.block || '');
           }
 
           // Dentro do mesmo bloco, ordenar por número
@@ -65,13 +80,24 @@ const UnitList: React.FC = () => {
 
         setUnits(sortedUnits);
       }
-    };
+    } catch (err) {
+      console.error("UnitList: Erro catastrófico:", err);
+      setError("Erro inesperado ao conectar ao banco de dados.");
+    } finally {
+      setIsLoading(false);
+      setIsRetrying(false);
+    }
+  };
+
+  useEffect(() => {
     fetchUnits();
   }, []);
 
-  const filtered = units.filter(ap =>
-    ap.number.includes(searchTerm) || ap.residentName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filtered = units.filter(ap => {
+    const name = ap.residentName || '';
+    const num = ap.number || '';
+    return num.includes(searchTerm) || name.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
   return (
     <div className="pb-32 pt-safe flex-1 flex flex-col bg-slate-50 dark:bg-background-dark">
@@ -110,12 +136,46 @@ const UnitList: React.FC = () => {
 
         {/* List */}
         <div className="space-y-4">
-          {filtered.length === 0 ? (
+          {isLoading ? (
+            <div className="py-24 text-center">
+              <div className="size-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">Carregando unidades...</p>
+            </div>
+          ) : error ? (
+            <div className="py-20 text-center space-y-6 px-6">
+              <div className="size-20 bg-rose-50 dark:bg-rose-900/10 rounded-full flex items-center justify-center mx-auto text-primary">
+                <span className="material-symbols-outlined text-4xl">cloud_off</span>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-tighter">Erro ao Sincronizar</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">{error}</p>
+              </div>
+              <button 
+                onClick={() => {
+                  setIsRetrying(true);
+                  fetchUnits();
+                }}
+                disabled={isRetrying}
+                className="w-full h-12 bg-primary text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-primary/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+              >
+                {isRetrying ? (
+                  <div className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-base">refresh</span>
+                    Tentar Novamente
+                  </>
+                )}
+              </button>
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="py-24 text-center">
               <div className="size-20 bg-slate-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto text-slate-200 mb-4">
                 <span className="material-symbols-outlined text-4xl">domain</span>
               </div>
-              <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Nenhuma unidade ativa</p>
+              <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">
+                {searchTerm ? 'Nenhuma unidade encontrada' : 'Nenhuma unidade ativa'}
+              </p>
             </div>
           ) : (
             filtered.map((ap) => (

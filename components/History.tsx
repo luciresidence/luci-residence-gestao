@@ -10,11 +10,16 @@ interface HistoryProps {
 const History: React.FC<HistoryProps> = ({ onImageClick }) => {
   const [readings, setReadings] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isRetrying, setIsRetrying] = useState(false);
 
-  useEffect(() => {
-    const fetchHistory = async () => {
-      setIsLoading(true);
-      const { data } = await supabase
+  const fetchHistory = async () => {
+    setIsLoading(true);
+    setError(null);
+    console.log("History: Buscando histórico no Supabase...");
+    
+    try {
+      const { data, error: fetchError } = await supabase
         .from('readings')
         .select(`
           *,
@@ -26,9 +31,27 @@ const History: React.FC<HistoryProps> = ({ onImageClick }) => {
         `)
         .order('date', { ascending: false });
 
-      if (data) setReadings(data);
+      if (fetchError) {
+        console.error("History: Erro ao buscar histórico:", fetchError);
+        setError(`Erro ao carregar histórico: ${fetchError.message}`);
+        setIsLoading(false);
+        return;
+      }
+
+      if (data) {
+        console.log(`History: ${data.length} registros encontrados.`);
+        setReadings(data);
+      }
+    } catch (err) {
+      console.error("History: Erro catastrófico:", err);
+      setError("Erro inesperado ao conectar ao banco de dados.");
+    } finally {
       setIsLoading(false);
-    };
+      setIsRetrying(false);
+    }
+  };
+
+  useEffect(() => {
     fetchHistory();
   }, []);
 
@@ -48,7 +71,34 @@ const History: React.FC<HistoryProps> = ({ onImageClick }) => {
       </header>
 
       <div className="p-5 space-y-4">
-        {readings.length === 0 ? (
+        {error ? (
+          <div className="py-20 text-center space-y-6 px-6">
+            <div className="size-20 bg-rose-50 dark:bg-rose-900/10 rounded-full flex items-center justify-center mx-auto text-primary">
+              <span className="material-symbols-outlined text-4xl">cloud_off</span>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-tighter">Falha no Histórico</p>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">{error}</p>
+            </div>
+            <button 
+              onClick={() => {
+                setIsRetrying(true);
+                fetchHistory();
+              }}
+              disabled={isRetrying}
+              className="w-full h-12 bg-primary text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-primary/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+            >
+              {isRetrying ? (
+                <div className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-base">refresh</span>
+                  Recarregar
+                </>
+              )}
+            </button>
+          </div>
+        ) : readings.length === 0 ? (
           <div className="py-20 text-center opacity-30">
             <span className="material-symbols-outlined text-5xl">history</span>
             <p className="text-[10px] items-center font-bold uppercase tracking-widest mt-2">Nenhum registro encontrado</p>
