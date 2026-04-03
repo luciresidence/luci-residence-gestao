@@ -29,60 +29,48 @@ const UnitList: React.FC = () => {
   const fetchUnits = async () => {
     setIsLoading(true);
     setError(null);
-    console.log("UnitList: Buscando unidades no Supabase...");
+    console.log("UnitList: Iniciando busca de unidades...");
     
     try {
-      const { data, error: fetchError } = await supabase
-        .from('apartments')
-        .select('*');
+      // Tentativa 1: Buscar do Supabase. A chave anon-key do projeto é fixa.
+      const supabaseKey = (supabase as any).role === 'anon' ? (supabase as any).supabaseKey : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsaXhvd29mc3NiaW11ZGJyZWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NzcyNjksImV4cCI6MjA4NDM1MzI2OX0.28TcTxfnLUFr-CJ-4C7sTVSyrd_jDVkaf46qEIl4Sbo';
+      const url = `https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?select=*&apikey=${supabaseKey}`;
+      
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-      if (fetchError) {
-        console.error("UnitList: Erro ao buscar unidades:", fetchError);
-        setError(`Erro ao carregar unidades: ${fetchError.message}`);
-        setIsLoading(false);
-        return;
+      if (!response.ok) {
+        throw new Error(`Servidor respondeu com status ${response.status}`);
       }
 
-      if (data) {
-        console.log(`UnitList: ${data.length} unidades encontradas.`);
-        const mappedUnits = data.map(apt => ({
-          ...apt,
-          residentName: apt.resident_name || '',
-          residentRole: apt.resident_role || 'Residente',
-          avatarUrl: apt.avatar_url
-        }));
+      const data = await response.json();
+      console.log(`UnitList: ${data.length} unidades carregadas.`);
+      
+      const mappedUnits = data.map((apt: any) => ({
+        ...apt,
+        residentName: apt.resident_name || '',
+        residentRole: apt.resident_role || 'Residente',
+        avatarUrl: apt.avatar_url
+      }));
 
-        // Ordenação customizada: Unidades com texto primeiro, depois Bloco A, depois Bloco B
-        const sortedUnits = mappedUnits.sort((a, b) => {
-          const numA = parseInt(a.number);
-          const numB = parseInt(b.number);
-          const isNumericA = !isNaN(numA);
-          const isNumericB = !isNaN(numB);
+      const sortedUnits = mappedUnits.sort((a: any, b: any) => {
+        const numA = parseInt(a.number);
+        const numB = parseInt(b.number);
+        if (isNaN(numA) && !isNaN(numB)) return -1;
+        if (!isNaN(numA) && isNaN(numB)) return 1;
+        if (isNaN(numA) && isNaN(numB)) return (a.number || '').localeCompare(b.number || '');
+        if (a.block !== b.block) return (a.block || '').localeCompare(b.block || '');
+        return numA - numB;
+      });
 
-          // Unidades com texto (não numéricos) sempre primeiro
-          if (!isNumericA && isNumericB) return -1;
-          if (isNumericA && !isNumericB) return 1;
-
-          // Se ambos são texto, ordenar alfabeticamente
-          if (!isNumericA && !isNumericB) {
-            return (a.number || '').localeCompare(b.number || '');
-          }
-
-          // Se ambos são numéricos, separar por bloco
-          if (a.block !== b.block) {
-            // Bloco A antes do Bloco B
-            return (a.block || '').localeCompare(b.block || '');
-          }
-
-          // Dentro do mesmo bloco, ordenar por número
-          return numA - numB;
-        });
-
-        setUnits(sortedUnits);
-      }
-    } catch (err) {
-      console.error("UnitList: Erro catastrófico:", err);
-      setError("Erro inesperado ao conectar ao banco de dados.");
+      setUnits(sortedUnits);
+    } catch (err: any) {
+      console.error("UnitList: Erro na conexão:", err);
+      setError(`Erro de conexão (Fetch): ${err.message || 'Verifique sua internet ou firewall'}`);
     } finally {
       setIsLoading(false);
       setIsRetrying(false);
