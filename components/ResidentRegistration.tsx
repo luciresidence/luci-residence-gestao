@@ -45,17 +45,17 @@ const ResidentRegistration: React.FC = () => {
 
     const fetchApartments = async () => {
         setIsLoading(true);
-        const { data, error } = await supabase
-            .from('apartments')
-            .select('id, number, block')
-            .order('number');
-
-        if (error) {
-            setErrors(prev => ({ ...prev, general: 'Erro ao carregar unidades.' }));
-        } else {
+        try {
+            const supabaseKey = (supabase as any).supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsaXhvd29mc3NiaW11ZGJyZWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NzcyNjksImV4cCI6MjA4NDM1MzI2OX0.28TcTxfnLUFr-CJ-4C7sTVSyrd_jDVkaf46qEIl4Sbo';
+            const url = `https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?select=id,number,block&order=number&apikey=${supabaseKey}`;
+            const res = await fetch(url, { headers: { 'Authorization': `Bearer ${supabaseKey}` } });
+            const data = await res.json();
             setApartments(data || []);
+        } catch (e) {
+            setErrors(prev => ({ ...prev, general: 'Erro de conexão ao carregar unidades.' }));
+        } finally {
+            setIsLoading(false);
         }
-        setIsLoading(false);
     };
 
     const handleAddResident = () => {
@@ -274,20 +274,14 @@ const ResidentRegistration: React.FC = () => {
     };
 
     const handleSubmit = async () => {
-        // Only allow submission on step 3
-        if (step !== 3) {
-            return;
-        }
-
+        if (step !== 3) return;
         setErrors({});
-
         if (!validateStepData(step)) return;
 
         setIsSubmitting(true);
-
-        const { error: submitError } = await supabase
-            .from('resident_registrations')
-            .insert([{
+        try {
+            const supabaseKey = (supabase as any).supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsaXhvd29mc3NiaW11ZGJyZWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NzcyNjksImV4cCI6MjA4NDM1MzI2OX0.28TcTxfnLUFr-CJ-4C7sTVSyrd_jDVkaf46qEIl4Sbo';
+            const payload = {
                 apartment_id: selectedApartment,
                 full_name: fullName,
                 cpf: cpf.replace(/[^\d]/g, ''),
@@ -302,14 +296,21 @@ const ResidentRegistration: React.FC = () => {
                 owner_phone: residentType === 'Inquilino' ? ownerPhone.replace(/[^\d]/g, '') : null,
                 additional_residents: additionalResidents,
                 status: 'PENDENTE'
-            }]);
+            };
 
-        if (submitError) {
-            setErrors(prev => ({ ...prev, general: 'Erro ao enviar: ' + submitError.message }));
-        } else {
-            setSuccess(true);
+            const res = await fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/resident_registrations?apikey=${supabaseKey}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) setSuccess(true);
+            else setErrors(prev => ({ ...prev, general: 'Erro ao enviar cadastro. Tente novamente.' }));
+        } catch (e) {
+            setErrors(prev => ({ ...prev, general: 'Erro de conexão ao enviar cadastro.' }));
+        } finally {
+            setIsSubmitting(false);
         }
-        setIsSubmitting(false);
     };
 
     if (success) {

@@ -41,72 +41,52 @@ const ApartmentList: React.FC = () => {
   const fetchData = async () => {
     setIsLoading(true);
     setError(null);
-    console.log("Iniciando busca de dados no Supabase...");
+    console.log("Iniciando busca de dados (Medições)...");
     
     try {
-      const { data: apts, error: aptError } = await supabase.from('apartments').select('*').order('number');
-      const { data: reads, error: readsError } = await supabase.from('readings').select('*');
+      const supabaseKey = (supabase as any).role === 'anon' ? (supabase as any).supabaseKey : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsaXhvd29mc3NiaW11ZGJyZWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NzcyNjksImV4cCI6MjA4NDM1MzI2OX0.28TcTxfnLUFr-CJ-4C7sTVSyrd_jDVkaf46qEIl4Sbo';
+      
+      const aptsUrl = `https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?select=*&order=number&apikey=${supabaseKey}`;
+      const readsUrl = `https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?select=*&apikey=${supabaseKey}`;
 
-      if (aptError) {
-        console.error("Erro ao buscar apartamentos:", aptError);
-        setError(`Erro ao carregar unidades: ${aptError.message}`);
-        setIsLoading(false);
-        return;
-      }
+      const [aptsRes, readsRes] = await Promise.all([
+        fetch(aptsUrl, { headers: { 'Authorization': `Bearer ${supabaseKey}` } }),
+        fetch(readsUrl, { headers: { 'Authorization': `Bearer ${supabaseKey}` } })
+      ]);
 
-      if (readsError) {
-        console.error("Erro ao buscar leituras:", readsError);
-        // Não travamos o fluxo se apenas as leituras falharem, mas avisamos
-        console.warn("As leituras não puderam ser carregadas, mas as unidades serão exibidas.");
+      if (!aptsRes.ok) throw new Error("Erro ao buscar unidades");
+      
+      const apts = await aptsRes.json();
+      let reads = [];
+      if (readsRes.ok) {
+        reads = await readsRes.json();
       }
 
       if (apts) {
-        console.log(`Sucesso! ${apts.length} unidades encontradas.`);
-        const mappedApts = apts.map(apt => ({
+        const mappedApts = apts.map((apt: any) => ({
           ...apt,
-          residentName: apt.resident_name || '', // Garantir que não seja nulo
+          residentName: apt.resident_name || '',
           residentRole: apt.resident_role || 'Residente',
           avatarUrl: apt.avatar_url
         }));
 
-        // Ordenação customizada: Unidades com texto primeiro, depois Bloco A, depois Bloco B
-        const sortedApts = mappedApts.sort((a, b) => {
+        const sortedApts = mappedApts.sort((a: any, b: any) => {
           const numA = parseInt(a.number);
           const numB = parseInt(b.number);
-          const isNumericA = !isNaN(numA);
-          const isNumericB = !isNaN(numB);
-
-          // Unidades com texto (não numéricos) sempre primeiro
-          if (!isNumericA && isNumericB) return -1;
-          if (isNumericA && !isNumericB) return 1;
-
-          // Se ambos são texto, ordenar alfabeticamente
-          if (!isNumericA && !isNumericB) {
-            return (a.number || '').localeCompare(b.number || '');
-          }
-
-          // Se ambos são numéricos, separar por bloco
-          if (a.block !== b.block) {
-            // Bloco A antes do Bloco B
-            return (a.block || '').localeCompare(b.block || '');
-          }
-
-          // Dentro do mesmo bloco, ordenar por número
+          if (isNaN(numA) && !isNaN(numB)) return -1;
+          if (!isNaN(numA) && isNaN(numB)) return 1;
+          if (isNaN(numA) && isNaN(numB)) return (a.number || '').localeCompare(b.number || '');
+          if (a.block !== b.block) return (a.block || '').localeCompare(b.block || '');
           return numA - numB;
         });
 
         setApartments(sortedApts);
-      } else {
-        console.warn("Nenhuma unidade retornada do banco.");
       }
 
-      if (reads) {
-        console.log(`${reads.length} leituras encontradas.`);
-        setSavedReadings(reads);
-      }
-    } catch (err) {
-      console.error("Erro catastrófico no fetchData:", err);
-      setError("Erro inesperado ao conectar ao banco de dados.");
+      setSavedReadings(reads);
+    } catch (err: any) {
+      console.error("Erro no fetchData:", err);
+      setError(`Erro de conexão: ${err.message || 'Verifique sua conexão'}`);
     } finally {
       setIsLoading(false);
       setIsRetrying(false);

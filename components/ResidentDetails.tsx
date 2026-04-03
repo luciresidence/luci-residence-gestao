@@ -16,36 +16,36 @@ const ResidentDetails: React.FC = () => {
     if (id) {
       const fetchData = async () => {
         setIsLoading(true);
-        // Fetch Apartment basic info
-        const { data: aptData } = await supabase
-          .from('apartments')
-          .select('*')
-          .eq('id', id)
-          .single();
+        try {
+          const supabaseKey = (supabase as any).supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsaXhvd29mc3NiaW11ZGJyZWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NzcyNjksImV4cCI6MjA4NDM1MzI2OX0.28TcTxfnLUFr-CJ-4C7sTVSyrd_jDVkaf46qEIl4Sbo';
+          
+          // 1. Fetch Apartment basic info
+          const aptRes = await fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?id=eq.${id}&select=*&apikey=${supabaseKey}`, { headers: { 'Authorization': `Bearer ${supabaseKey}` } });
+          const aptList = await aptRes.json();
+          const aptData = aptList[0];
 
-        if (aptData) {
-          setApartment({
-            ...aptData,
-            residentName: aptData.resident_name,
-            residentRole: aptData.resident_role,
-            avatarUrl: aptData.avatar_url
-          });
+          if (aptData) {
+            setApartment({
+              ...aptData,
+              residentName: aptData.resident_name,
+              residentRole: aptData.resident_role,
+              avatarUrl: aptData.avatar_url
+            });
+          }
+
+          // 2. Fetch latest approved registration
+          const regRes = await fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/resident_registrations?apartment_id=eq.${id}&status=eq.APROVADO&order=created_at.desc&limit=1&select=*&apikey=${supabaseKey}`, { headers: { 'Authorization': `Bearer ${supabaseKey}` } });
+          const regList = await regRes.json();
+          const regData = regList[0];
+
+          if (regData) {
+            setRegistration(regData);
+          }
+        } catch (e) {
+          console.error("ResidentDetails: Erro ao carregar", e);
+        } finally {
+          setIsLoading(false);
         }
-
-        // Fetch latest approved registration for this apartment
-        const { data: regData } = await supabase
-          .from('resident_registrations')
-          .select('*')
-          .eq('apartment_id', id)
-          .eq('status', 'APROVADO')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (regData) {
-          setRegistration(regData);
-        }
-        setIsLoading(false);
       };
       fetchData();
     }

@@ -68,30 +68,35 @@ const RegistrationManager: React.FC = () => {
 
     const fetchRegistrations = async () => {
         setIsLoading(true);
-        const { data, error } = await supabase
-            .from('resident_registrations')
-            .select('*, apartments(number, block)')
-            .eq('status', 'PENDENTE')
-            .order('created_at', { ascending: false });
-
-        if (error) {
-            console.error('Error fetching registrations:', error);
-        } else {
+        try {
+            const supabaseKey = (supabase as any).supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsaXhvd29mc3NiaW11ZGJyZWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NzcyNjksImV4cCI6MjA4NDM1MzI2OX0.28TcTxfnLUFr-CJ-4C7sTVSyrd_jDVkaf46qEIl4Sbo';
+            const url = `https://blixowofssbimudbrejm.supabase.co/rest/v1/resident_registrations?select=*,apartments(number,block)&status=eq.PENDENTE&order=created_at.desc&apikey=${supabaseKey}`;
+            const res = await fetch(url, { headers: { 'Authorization': `Bearer ${supabaseKey}` } });
+            const data = await res.json();
             setRegistrations(data || []);
+        } catch (e) {
+            console.error('Error fetching registrations:', e);
+        } finally {
+            setIsLoading(false);
         }
-        setIsLoading(false);
     };
 
     const handleUpdateStatus = async (id: string, status: string) => {
-        const { error } = await supabase
-            .from('resident_registrations')
-            .update({ status })
-            .eq('id', id);
+        try {
+            const supabaseKey = (supabase as any).supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsaXhvd29mc3NiaW11ZGJyZWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NzcyNjksImV4cCI6MjA4NDM1MzI2OX0.28TcTxfnLUFr-CJ-4C7sTVSyrd_jDVkaf46qEIl4Sbo';
+            const res = await fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/resident_registrations?id=eq.${id}&apikey=${supabaseKey}`, {
+                method: 'PATCH',
+                headers: { 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status })
+            });
 
-        if (!error) {
-            fetchRegistrations();
-            setSelectedReg(null);
-            setIsEditing(false);
+            if (res.ok) {
+                fetchRegistrations();
+                setSelectedReg(null);
+                setIsEditing(false);
+            }
+        } catch (e) {
+            console.error('Error updating status:', e);
         }
     };
 
@@ -99,9 +104,9 @@ const RegistrationManager: React.FC = () => {
         if (!selectedReg) return;
 
         setIsSaving(true);
-        const { error } = await supabase
-            .from('resident_registrations')
-            .update({
+        try {
+            const supabaseKey = (supabase as any).supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsaXhvd29mc3NiaW11ZGJyZWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NzcyNjksImV4cCI6MjA4NDM1MzI2OX0.28TcTxfnLUFr-CJ-4C7sTVSyrd_jDVkaf46qEIl4Sbo';
+            const payload = {
                 full_name: editFullName,
                 cpf: editCpf,
                 birth_date: editBirthDate,
@@ -114,45 +119,44 @@ const RegistrationManager: React.FC = () => {
                 owner_name: editResidentType === 'Inquilino' ? editOwnerName : null,
                 owner_phone: editResidentType === 'Inquilino' ? editOwnerPhone.replace(/\D/g, '') : null,
                 additional_residents: editAdditionalResidents
-            })
-            .eq('id', selectedReg.id);
+            };
 
-        if (!error) {
-            // Update local state
-            const updatedReg = {
-                ...selectedReg,
-                full_name: editFullName,
-                cpf: editCpf,
-                birth_date: editBirthDate,
-                phone: editPhone,
-                resident_type: editResidentType,
-                garage_spot: editGarageSpot,
-                is_financial_responsible: editIsFinancialResponsible,
-                financial_responsible_name: editIsFinancialResponsible ? null : editFinancialResponsibleName,
-                financial_responsible_cpf: editIsFinancialResponsible ? null : editFinancialResponsibleCpf.replace(/\D/g, ''),
-                owner_name: editResidentType === 'Inquilino' ? editOwnerName : null,
-                owner_phone: editResidentType === 'Inquilino' ? editOwnerPhone.replace(/\D/g, '') : null,
-                additional_residents: editAdditionalResidents
-            } as Registration;
-            setSelectedReg(updatedReg);
-            setIsEditing(false);
-            fetchRegistrations();
+            const res = await fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/resident_registrations?id=eq.${selectedReg.id}&apikey=${supabaseKey}`, {
+                method: 'PATCH',
+                headers: { 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                const updatedReg = { ...selectedReg, ...payload } as Registration;
+                setSelectedReg(updatedReg);
+                setIsEditing(false);
+                fetchRegistrations();
+            }
+        } catch (e) {
+            console.error('Error saving edits:', e);
+        } finally {
+            setIsSaving(false);
         }
-        setIsSaving(false);
     };
 
     const handleApplyToUnit = async (reg: Registration) => {
-        // Update the core apartments table with the primary resident name
-        const { error } = await supabase
-            .from('apartments')
-            .update({
-                resident_name: reg.full_name,
-                resident_role: reg.resident_type
-            })
-            .eq('id', reg.apartment_id);
+        try {
+            const supabaseKey = (supabase as any).supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsaXhvd29mc3NiaW11ZGJyZWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NzcyNjksImV4cCI6MjA4NDM1MzI2OX0.28TcTxfnLUFr-CJ-4C7sTVSyrd_jDVkaf46qEIl4Sbo';
+            const res = await fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/apartments?id=eq.${reg.apartment_id}&apikey=${supabaseKey}`, {
+                method: 'PATCH',
+                headers: { 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    resident_name: reg.full_name,
+                    resident_role: reg.resident_type
+                })
+            });
 
-        if (!error) {
-            handleUpdateStatus(reg.id, 'APROVADO');
+            if (res.ok) {
+                handleUpdateStatus(reg.id, 'APROVADO');
+            }
+        } catch (e) {
+            console.error('Error applying to unit:', e);
         }
     };
 
@@ -166,17 +170,22 @@ const RegistrationManager: React.FC = () => {
             return;
         }
 
-        const { error } = await supabase
-            .from('resident_registrations')
-            .delete()
-            .eq('id', id);
+        try {
+            const supabaseKey = (supabase as any).supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsaXhvd29mc3NiaW11ZGJyZWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NzcyNjksImV4cCI6MjA4NDM1MzI2OX0.28TcTxfnLUFr-CJ-4C7sTVSyrd_jDVkaf46qEIl4Sbo';
+            const res = await fetch(`https://blixowofssbimudbrejm.supabase.co/rest/v1/resident_registrations?id=eq.${id}&apikey=${supabaseKey}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${supabaseKey}` }
+            });
 
-        if (!error) {
-            fetchRegistrations();
-            setSelectedReg(null);
-            setIsEditing(false);
-        } else {
-            alert('Erro ao excluir o formulário. Tente novamente.');
+            if (res.ok) {
+                fetchRegistrations();
+                setSelectedReg(null);
+                setIsEditing(false);
+            } else {
+                alert('Erro ao excluir o formulário. Tente novamente.');
+            }
+        } catch (e) {
+            console.error('Error deleting registration:', e);
         }
     };
 

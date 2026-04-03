@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Apartment } from '../types';
@@ -16,35 +15,30 @@ const History: React.FC<HistoryProps> = ({ onImageClick }) => {
   const fetchHistory = async () => {
     setIsLoading(true);
     setError(null);
-    console.log("History: Buscando histórico no Supabase...");
+    console.log("History: Buscando histórico...");
     
     try {
-      const { data, error: fetchError } = await supabase
-        .from('readings')
-        .select(`
-          *,
-          apartments (
-            number,
-            block,
-            resident_name
-          )
-        `)
-        .order('date', { ascending: false });
+      const supabaseKey = (supabase as any).supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsaXhvd29mc3NiaW11ZGJyZWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NzcyNjksImV4cCI6MjA4NDM1MzI2OX0.28TcTxfnLUFr-CJ-4C7sTVSyrd_jDVkaf46qEIl4Sbo';
+      const url = `https://blixowofssbimudbrejm.supabase.co/rest/v1/readings?select=*,apartments(number,block,resident_name)&order=date.desc&apikey=${supabaseKey}`;
+      
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey
+        }
+      });
 
-      if (fetchError) {
-        console.error("History: Erro ao buscar histórico:", fetchError);
-        setError(`Erro ao carregar histórico: ${fetchError.message}`);
-        setIsLoading(false);
-        return;
+      if (!response.ok) {
+        throw new Error(`Erro ${response.status} ao carregar histórico`);
       }
 
-      if (data) {
-        console.log(`History: ${data.length} registros encontrados.`);
-        setReadings(data);
-      }
-    } catch (err) {
-      console.error("History: Erro catastrófico:", err);
-      setError("Erro inesperado ao conectar ao banco de dados.");
+      const data = await response.json();
+      console.log(`History: ${data.length} registros carregados.`);
+      setReadings(data);
+    } catch (err: any) {
+      console.error("History: Erro na conexão:", err);
+      setError(`Erro de conexão: ${err.message || 'Falha ao buscar histórico'}`);
     } finally {
       setIsLoading(false);
       setIsRetrying(false);
