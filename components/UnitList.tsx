@@ -22,55 +22,59 @@ const UnitList: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [units, setUnits] = useState<Apartment[]>([]);
+  const [debugError, setDebugError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUnits = async () => {
-      const { data, error } = await supabase
-        .from('apartments')
-        .select('*');
+      try {
+        const { data, error } = await supabase
+          .from('apartments')
+          .select('*');
 
-      if (data) {
-        const mappedUnits = data.map(apt => ({
-          ...apt,
-          residentName: apt.resident_name,
-          residentRole: apt.resident_role,
-          avatarUrl: apt.avatar_url
-        }));
+        if (error) {
+          setDebugError(JSON.stringify(error));
+        }
 
-        // Ordenação customizada: Unidades com texto primeiro, depois Bloco A, depois Bloco B
-        const sortedUnits = mappedUnits.sort((a, b) => {
-          const numA = parseInt(a.number);
-          const numB = parseInt(b.number);
-          const isNumericA = !isNaN(numA);
-          const isNumericB = !isNaN(numB);
+        if (data) {
+          const mappedUnits = data.map(apt => ({
+            ...apt,
+            residentName: apt.resident_name,
+            residentRole: apt.resident_role,
+            avatarUrl: apt.avatar_url
+          }));
 
-          // Unidades com texto (não numéricos) sempre primeiro
-          if (!isNumericA && isNumericB) return -1;
-          if (isNumericA && !isNumericB) return 1;
+          // Ordenação customizada: Unidades com texto primeiro, depois Bloco A, depois Bloco B
+          const sortedUnits = mappedUnits.sort((a, b) => {
+            const numA = parseInt(a.number);
+            const numB = parseInt(b.number);
+            const isNumericA = !isNaN(numA);
+            const isNumericB = !isNaN(numB);
 
-          // Se ambos são texto, ordenar alfabeticamente
-          if (!isNumericA && !isNumericB) {
-            return a.number.localeCompare(b.number);
-          }
+            if (!isNumericA && isNumericB) return -1;
+            if (isNumericA && !isNumericB) return 1;
 
-          // Se ambos são numéricos, separar por bloco
-          if (a.block !== b.block) {
-            // Bloco A antes do Bloco B
-            return a.block.localeCompare(b.block);
-          }
+            if (!isNumericA && !isNumericB) {
+              return a.number.localeCompare(b.number);
+            }
 
-          // Dentro do mesmo bloco, ordenar por número
-          return numA - numB;
-        });
+            if (a.block !== b.block) {
+              return a.block.localeCompare(b.block);
+            }
 
-        setUnits(sortedUnits);
+            return numA - numB;
+          });
+
+          setUnits(sortedUnits);
+        }
+      } catch (err: any) {
+        setDebugError(err.message || String(err));
       }
     };
     fetchUnits();
   }, []);
 
   const filtered = units.filter(ap =>
-    ap.number.includes(searchTerm) || ap.residentName.toLowerCase().includes(searchTerm.toLowerCase())
+    ap.number.includes(searchTerm) || (ap.residentName || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -110,7 +114,14 @@ const UnitList: React.FC = () => {
 
         {/* List */}
         <div className="space-y-4">
-          {filtered.length === 0 ? (
+          {debugError && (
+            <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded-xl mb-4">
+              <p className="font-bold">Erro técnico capturado:</p>
+              <pre className="text-xs whitespace-pre-wrap">{debugError}</pre>
+            </div>
+          )}
+
+          {filtered.length === 0 && !debugError ? (
             <div className="py-24 text-center">
               <div className="size-20 bg-slate-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto text-slate-200 mb-4">
                 <span className="material-symbols-outlined text-4xl">domain</span>
