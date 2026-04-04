@@ -32,33 +32,39 @@ const UnitList: React.FC = () => {
           .select('*');
 
         if (error) {
-          setDebugError(JSON.stringify(error));
+          setDebugError(`Erro do Banco: ${error.message} (${error.code})`);
+          return;
         }
 
         if (data) {
+          console.log(`Recebidos ${data.length} apartamentos`);
+          if (data.length === 0) {
+            setDebugError("O banco retornou ZERO apartamentos. Verifique se as tabelas estão populadas.");
+          }
+          
           const mappedUnits = data.map(apt => ({
             ...apt,
-            residentName: apt.resident_name,
-            residentRole: apt.resident_role,
-            avatarUrl: apt.avatar_url
+            residentName: apt.resident_name || 'Unidade Vazia',
+            residentRole: apt.resident_role || 'Residente',
+            avatarUrl: apt.avatar_url || ''
           }));
 
-          // Ordenação customizada: Unidades com texto primeiro, depois Bloco A, depois Bloco B
+          // Ordenação customizada
           const sortedUnits = mappedUnits.sort((a, b) => {
-            const numA = parseInt(a.number);
-            const numB = parseInt(b.number);
-            const isNumericA = !isNaN(numA);
-            const isNumericB = !isNaN(numB);
+            const numA = parseInt(a.number) || 0;
+            const numB = parseInt(b.number) || 0;
+            const isNumericA = !isNaN(parseInt(a.number));
+            const isNumericB = !isNaN(parseInt(b.number));
 
             if (!isNumericA && isNumericB) return -1;
             if (isNumericA && !isNumericB) return 1;
 
             if (!isNumericA && !isNumericB) {
-              return a.number.localeCompare(b.number);
+              return (a.number || '').localeCompare(b.number || '');
             }
 
             if (a.block !== b.block) {
-              return a.block.localeCompare(b.block);
+              return (a.block || '').localeCompare(b.block || '');
             }
 
             return numA - numB;
@@ -67,7 +73,7 @@ const UnitList: React.FC = () => {
           setUnits(sortedUnits);
         }
       } catch (err: any) {
-        setDebugError(err.message || String(err));
+        setDebugError(`Erro de Execução: ${err.message || 'Falha desconhecida'}`);
       }
     };
     fetchUnits();

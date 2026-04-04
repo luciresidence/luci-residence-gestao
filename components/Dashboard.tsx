@@ -21,6 +21,7 @@ const Dashboard: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [insight, setInsight] = useState<string>('Analisando dados do mês...');
   const [loading, setLoading] = useState(true);
+  const [debugError, setDebugError] = useState<string | null>(null);
   const [rankings, setRankings] = useState<{ water: any[], gas: any[] }>({ water: [], gas: [] });
   const [summary, setSummary] = useState({
     water: 0,
@@ -31,15 +32,21 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     const fetchInitialDate = async () => {
-      const { data } = await supabase
-        .from('readings')
-        .select('date')
-        .order('date', { ascending: false })
-        .limit(1);
+      try {
+        const { data, error } = await supabase
+          .from('readings')
+          .select('date')
+          .order('date', { ascending: false })
+          .limit(1);
 
-      if (data && data.length > 0) {
-        const lastDate = new Date(data[0].date);
-        setCurrentDate(new Date(lastDate.getFullYear(), lastDate.getMonth(), 1));
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          const lastDate = new Date(data[0].date);
+          setCurrentDate(new Date(lastDate.getFullYear(), lastDate.getMonth(), 1));
+        }
+      } catch (err: any) {
+        console.error("Erro na data inicial:", err);
       }
     };
     fetchInitialDate();
@@ -47,90 +54,100 @@ const Dashboard: React.FC = () => {
 
   const fetchDashboardData = async (date: Date) => {
     setLoading(true);
+    setDebugError(null);
     setInsight('Analisando dados do mês...');
 
     const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1).toISOString();
     const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59).toISOString();
 
-    // Fetch current month readings
-    const { data: currentReadings } = await supabase
-      .from('readings')
-      .select('*')
-      .gte('date', startOfMonth)
-      .lte('date', endOfMonth);
+    try {
+      // 1. Fetch current month readings
+      const { data: currentReadings, error: currError } = await supabase
+        .from('readings')
+        .select('*')
+        .gte('date', startOfMonth)
+        .lte('date', endOfMonth);
 
-    // Fetch previous month readings for comparison
-    const prevMonthDate = new Date(date.getFullYear(), date.getMonth() - 1, 1);
-    const startOfPrevMonth = prevMonthDate.toISOString();
-    const endOfPrevMonth = new Date(date.getFullYear(), date.getMonth(), 0, 23, 59, 59).toISOString();
+      if (currError) throw currError;
 
-    const { data: prevReadings } = await supabase
-      .from('readings')
-      .select('*')
-      .gte('date', startOfPrevMonth)
-      .lte('date', endOfPrevMonth);
+      // 2. Fetch previous month readings for comparison
+      const prevMonthDate = new Date(date.getFullYear(), date.getMonth() - 1, 1);
+      const startOfPrevMonth = prevMonthDate.toISOString();
+      const endOfPrevMonth = new Date(date.getFullYear(), date.getMonth(), 0, 23, 59, 59).toISOString();
 
-    const calculateTotal = (readings: any[], type: 'water' | 'gas') => {
-      return (readings || [])
-        .filter(r => r.type === type && r.current_value)
-        .reduce((acc, r) => acc + (Number(r.current_value) - Number(r.previous_value)), 0);
-    };
+      const { data: prevReadings, error: prevError } = await supabase
+        .from('readings')
+        .select('*')
+        .gte('date', startOfPrevMonth)
+        .lte('date', endOfPrevMonth);
 
-    const currentWater = calculateTotal(currentReadings || [], 'water');
-    const currentGas = calculateTotal(currentReadings || [], 'gas');
-    const prevWater = calculateTotal(prevReadings || [], 'water');
-    const prevGas = calculateTotal(prevReadings || [], 'gas');
+      if (prevError) throw prevError;
 
-    const calculateChange = (current: number, previous: number) => {
-      if (previous === 0) return 0;
-      return ((current - previous) / previous) * 100;
-    };
-
-    const waterChange = calculateChange(currentWater, prevWater);
-    const gasChange = calculateChange(currentGas, prevGas);
-
-    setSummary({
-      water: currentWater,
-      gas: currentGas,
-      waterChange,
-      gasChange
-    });
-
-    // IA Analysis with Real Data
-    if (currentWater > 0 || currentGas > 0) {
-      const res = await analyzeConsumption({
-        totalWater: currentWater,
-        totalGas: currentGas,
-        waterChange,
-        gasChange,
-        month: date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
-      });
-      setInsight(res);
-    } else {
-      setInsight('Sem dados de leitura para este mês.');
-    }
-
-    // Rankings Logic
-    const { data: apartments } = await supabase.from('apartments').select('*');
-    if (apartments && currentReadings) {
-      const calcRank = (type: 'water' | 'gas') => {
-        const usagePerUnit = (currentReadings || [])
+      const calculateTotal = (readings: any[], type: 'water' | 'gas') => {
+        return (readings || [])
           .filter(r => r.type === type && r.current_value)
-          .map(r => {
-            const apt = apartments.find(a => String(a.id) === String(r.apartment_id));
-            return {
-              unit: apt ? `${apt.number}${apt.block}` : '?',
-              usage: Number(r.current_value) - Number(r.previous_value)
-            };
-          })
-          .sort((a, b) => b.usage - a.usage)
-          .slice(0, 3);
-        return usagePerUnit;
+          .reduce((acc, r) => acc + (Number(r.current_value) - Number(r.previous_value)), 0);
       };
-      setRankings({ water: calcRank('water'), gas: calcRank('gas') });
-    }
 
-    setLoading(false);
+      const currentWater = calculateTotal(currentReadings || [], 'water');
+      const currentGas = calculateTotal(currentReadings || [], 'gas');
+      const prevWater = calculateTotal(prevReadings || [], 'water');
+      const prevGas = calculateTotal(prevReadings || [], 'gas');
+
+      const calculateChange = (current: number, previous: number) => {
+        if (previous === 0) return 0;
+        return ((current - previous) / previous) * 100;
+      };
+
+      const waterChange = calculateChange(currentWater, prevWater);
+      const gasChange = calculateChange(currentGas, prevGas);
+
+      setSummary({
+        water: currentWater,
+        gas: currentGas,
+        waterChange,
+        gasChange
+      });
+
+      // 3. IA Analysis
+      if (currentWater > 0 || currentGas > 0) {
+        const res = await analyzeConsumption({
+          totalWater: currentWater,
+          totalGas: currentGas,
+          waterChange,
+          gasChange,
+          month: date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+        });
+        setInsight(res);
+      } else {
+        setInsight('Sem dados de leitura para este mês.');
+      }
+
+      // 4. Rankings Logic
+      const { data: apartments, error: aptError } = await supabase.from('apartments').select('*');
+      if (aptError) throw aptError;
+
+      if (apartments && currentReadings) {
+        const calcRank = (type: 'water' | 'gas') => {
+          return (currentReadings || [])
+            .filter(r => r.type === type && r.current_value)
+            .map(r => {
+              const apt = apartments.find(a => String(a.id) === String(r.apartment_id));
+              return {
+                unit: apt ? `${apt.number}${apt.block}` : '?',
+                usage: Number(r.current_value) - Number(r.previous_value)
+              };
+            })
+            .sort((a, b) => b.usage - a.usage)
+            .slice(0, 3);
+        };
+        setRankings({ water: calcRank('water'), gas: calcRank('gas') });
+      }
+    } catch (err: any) {
+      setDebugError(`Erro de Conexão: ${err.message || 'Falha ao buscar dados do Dashboard'}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -159,6 +176,17 @@ const Dashboard: React.FC = () => {
         </header>
 
         <div className="p-4 space-y-5">
+          {/* Debug Error Block */}
+          {debugError && (
+            <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded-xl mb-4">
+              <p className="font-bold uppercase text-xs tracking-widest mb-1 items-center flex gap-2">
+                <span className="material-symbols-outlined text-sm">error</span>
+                Falha no Painel
+              </p>
+              <pre className="text-[10px] font-bold uppercase tracking-tighter whitespace-pre-wrap leading-tight">{debugError}</pre>
+            </div>
+          )}
+
           {/* Month Picker Functional */}
           <div className="flex items-center justify-between bg-white dark:bg-surface-dark px-4 py-3.5 rounded-3xl shadow-sm border dark:border-gray-800">
             <button

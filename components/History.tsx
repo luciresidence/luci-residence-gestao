@@ -10,24 +10,36 @@ interface HistoryProps {
 const History: React.FC<HistoryProps> = ({ onImageClick }) => {
   const [readings, setReadings] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [debugError, setDebugError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchHistory = async () => {
-      setIsLoading(true);
-      const { data } = await supabase
-        .from('readings')
-        .select(`
-          *,
-          apartments (
-            number,
-            block,
-            resident_name
-          )
-        `)
-        .order('date', { ascending: false });
+      try {
+        setIsLoading(true);
+        setDebugError(null);
+        
+        const { data, error } = await supabase
+          .from('readings')
+          .select(`
+            *,
+            apartments (
+              number,
+              block,
+              resident_name
+            )
+          `)
+          .order('date', { ascending: false });
 
-      if (data) setReadings(data);
-      setIsLoading(false);
+        if (error) {
+          setDebugError(`Erro do Banco: ${error.message} (${error.code})`);
+        } else if (data) {
+          setReadings(data);
+        }
+      } catch (err: any) {
+        setDebugError(`Erro de Rede/Execução: ${err.message || 'Falha na conexão'}`);
+      } finally {
+        setIsLoading(false);
+      }
     };
     fetchHistory();
   }, []);
@@ -48,7 +60,17 @@ const History: React.FC<HistoryProps> = ({ onImageClick }) => {
       </header>
 
       <div className="p-5 space-y-4">
-        {readings.length === 0 ? (
+        {debugError && (
+          <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded-xl mb-4">
+            <p className="font-bold uppercase text-xs tracking-widest mb-1 items-center flex gap-2">
+              <span className="material-symbols-outlined text-sm">error</span>
+              Erro de Conexão
+            </p>
+            <pre className="text-[10px] items-center font-bold uppercase tracking-tighter whitespace-pre-wrap leading-tight">{debugError}</pre>
+          </div>
+        )}
+
+        {readings.length === 0 && !debugError ? (
           <div className="py-20 text-center opacity-30">
             <span className="material-symbols-outlined text-5xl">history</span>
             <p className="text-[10px] items-center font-bold uppercase tracking-widest mt-2">Nenhum registro encontrado</p>
