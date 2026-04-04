@@ -65,8 +65,16 @@ const App: React.FC = () => {
   const toggleDarkMode = () => setDarkMode(!darkMode);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/login');
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      localStorage.clear();
+      setIsAuthenticated(false);
+      navigate('/login');
+      window.location.reload();
+    }
   };
 
   useEffect(() => {
