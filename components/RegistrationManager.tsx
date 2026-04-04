@@ -27,6 +27,7 @@ interface Registration {
 const RegistrationManager: React.FC = () => {
     const [registrations, setRegistrations] = useState<Registration[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [debugError, setDebugError] = useState<string | null>(null);
     const [selectedReg, setSelectedReg] = useState<Registration | null>(null);
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -67,19 +68,25 @@ const RegistrationManager: React.FC = () => {
     }, [selectedReg, isEditing]);
 
     const fetchRegistrations = async () => {
-        setIsLoading(true);
-        const { data, error } = await supabase
-            .from('resident_registrations')
-            .select('*, apartments(number, block)')
-            .eq('status', 'PENDENTE')
-            .order('created_at', { ascending: false });
+        try {
+            setIsLoading(true);
+            setDebugError(null);
+            const { data, error } = await supabase
+                .from('resident_registrations')
+                .select('*, apartments(number, block)')
+                .eq('status', 'PENDENTE')
+                .order('created_at', { ascending: false });
 
-        if (error) {
-            console.error('Error fetching registrations:', error);
-        } else {
-            setRegistrations(data || []);
+            if (error) {
+                setDebugError(`Erro do Banco: ${error.message} (${error.code})`);
+            } else {
+                setRegistrations(data || []);
+            }
+        } catch (err: any) {
+            setDebugError(`Erro de Rede/Execução: ${err.message || 'Falha na conexão'}`);
+        } finally {
+            setIsLoading(false);
         }
-        setIsLoading(false);
     };
 
     const handleUpdateStatus = async (id: string, status: string) => {
@@ -216,6 +223,16 @@ const RegistrationManager: React.FC = () => {
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {debugError && (
+                    <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded-xl mb-4">
+                        <p className="font-bold uppercase text-xs tracking-widest mb-1 items-center flex gap-2">
+                            <span className="material-symbols-outlined text-sm">error</span>
+                            Erro nos Formulários
+                        </p>
+                        <pre className="text-[10px] items-center font-bold uppercase tracking-tighter whitespace-pre-wrap leading-tight">{debugError}</pre>
+                    </div>
+                )}
+
                 {isLoading ? (
                     <div className="flex items-center justify-center p-12">
                         <div className="size-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
