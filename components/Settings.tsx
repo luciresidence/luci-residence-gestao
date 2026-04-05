@@ -18,20 +18,47 @@ const Settings: React.FC<SettingsProps> = ({ toggleDarkMode, isDarkMode, onLogou
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   // User Profile State
-  const [user, setUser] = useState(() => {
-    const local = storage.getUserProfile();
-    const sbUser = supabase.auth.getUser();
-    // We'll prioritize SB info if we had a profile, but for now just email
-    return local;
+  const [user, setUser] = useState({
+    name: 'Carregando...',
+    role: 'Administrador',
+    condo: 'Luci Berkembrock',
+    avatarUrl: ''
   });
   const [editUser, setEditUser] = useState(user);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user: sbUser } }) => {
+    const loadProfile = async () => {
+      const { data: { user: sbUser } } = await supabase.auth.getUser();
       if (sbUser) {
-        setUser(prev => ({ ...prev, name: sbUser.email?.split('@')[0] || prev.name, role: 'Administrador' }));
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', sbUser.id)
+          .single();
+
+        if (profile) {
+          const userData = {
+            name: profile.name || sbUser.email?.split('@')[0] || 'Usuário',
+            role: profile.role || 'Administrador',
+            condo: profile.condo || 'Luci Berkembrock',
+            avatarUrl: profile.avatar_url || ''
+          };
+          setUser(userData);
+          setEditUser(userData);
+        } else {
+          // Default for first time
+          const defaultData = {
+            name: sbUser.email?.split('@')[0] || 'Usuário',
+            role: 'Administrador',
+            condo: 'Luci Berkembrock',
+            avatarUrl: ''
+          };
+          setUser(defaultData);
+          setEditUser(defaultData);
+        }
       }
-    });
+    };
+    loadProfile();
   }, []);
 
   // Password State
@@ -43,12 +70,32 @@ const Settings: React.FC<SettingsProps> = ({ toggleDarkMode, isDarkMode, onLogou
     setTimeout(() => setMsg(null), 2000);
   };
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    storage.saveUserProfile(editUser);
-    setUser(editUser);
-    showMessage('Perfil atualizado com sucesso!');
-    setTimeout(() => setView('main'), 1000);
+    try {
+      const { data: { user: sbUser } } = await supabase.auth.getUser();
+      if (!sbUser) return;
+
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({
+          id: sbUser.id,
+          name: editUser.name,
+          role: editUser.role,
+          condo: editUser.condo,
+          avatar_url: editUser.avatarUrl,
+          updated_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
+
+      setUser(editUser);
+      storage.saveUserProfile(editUser); // Keep local for backup/offline
+      showMessage('Perfil atualizado com sucesso!');
+      setTimeout(() => setView('main'), 1000);
+    } catch (err: any) {
+      showMessage(`Erro ao salvar: ${err.message}`, 'error');
+    }
   };
 
   const handleChangePassword = (e: React.FormEvent) => {
@@ -66,17 +113,33 @@ const Settings: React.FC<SettingsProps> = ({ toggleDarkMode, isDarkMode, onLogou
     setTimeout(() => setView('main'), 1000);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onloadend = async () => {
         const newAvatar = reader.result as string;
         const newUser = { ...user, avatarUrl: newAvatar };
-        storage.saveUserProfile(newUser);
-        setUser(newUser);
-        setEditUser(newUser);
-        showMessage('Foto atualizada!');
+        
+        try {
+          const { data: { user: sbUser } } = await supabase.auth.getUser();
+          if (sbUser) {
+            await supabase
+              .from('profiles')
+              .upsert({
+                id: sbUser.id,
+                avatar_url: newAvatar,
+                updated_at: new Date().toISOString()
+              });
+          }
+          
+          storage.saveUserProfile(newUser);
+          setUser(newUser);
+          setEditUser(newUser);
+          showMessage('Foto atualizada!');
+        } catch (err: any) {
+          showMessage('Erro ao salvar foto', 'error');
+        }
       };
       reader.readAsDataURL(file);
     }
