@@ -65,8 +65,17 @@ const App: React.FC = () => {
   const toggleDarkMode = () => setDarkMode(!darkMode);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/login');
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.warn("Forçando logout após erro da API", error);
+    } finally {
+      localStorage.clear();
+      sessionStorage.clear();
+      setIsAuthenticated(false);
+      navigate('/login', { replace: true });
+      window.location.reload(); // Força reinício total 
+    }
   };
 
   useEffect(() => {
